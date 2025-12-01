@@ -283,7 +283,7 @@ export class Table {
         state.deck = undefined; // Hide deck
         state.players = state.players.map((p: any) => {
             if (!p) return null;
-            if (p.id !== playerId && !this.stage.includes('showdown')) {
+            if (p.id !== playerId && !this.stage.includes('showdown') && this.turnIndex !== -1) {
                 p.cards = null; // Hide cards
             }
             return p;

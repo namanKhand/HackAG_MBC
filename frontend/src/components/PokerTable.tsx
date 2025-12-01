@@ -17,7 +17,6 @@ interface Player {
     folded: boolean;
     cards: Card[] | null; // Null if masked
     seat: number;
-    seat: number;
     isTurn: boolean;
     status: 'active' | 'sitting_out';
 }
@@ -287,22 +286,24 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                         </button>
                     )}
 
-                    <div className="flex flex-col gap-2 items-center">
-                        <input
-                            type="range"
-                            min={table.currentBet + 20}
-                            max={me.chips}
-                            value={raiseAmount}
-                            onChange={(e) => setRaiseAmount(Number(e.target.value))}
-                            className="w-48 accent-green-500"
-                        />
-                        <button
-                            onClick={() => handleAction('raise', raiseAmount)}
-                            className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                        >
-                            RAISE TO ${raiseAmount}
-                        </button>
-                    </div>
+                    {me.chips > table.currentBet && (
+                        <div className="flex flex-col gap-2 items-center">
+                            <input
+                                type="range"
+                                min={Math.min(table.currentBet + 20, me.chips)}
+                                max={me.chips}
+                                value={raiseAmount}
+                                onChange={(e) => setRaiseAmount(Number(e.target.value))}
+                                className="w-48 accent-green-500"
+                            />
+                            <button
+                                onClick={() => handleAction('raise', raiseAmount)}
+                                className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                            >
+                                {raiseAmount === me.chips ? 'ALL IN' : `RAISE TO $${raiseAmount}`}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
