@@ -1,0 +1,269 @@
+import { Deck, Card } from './Deck';
+import { Hand } from 'pokersolver';
+
+export interface Player {
+    id: string; // Socket ID
+    address?: string; // Wallet address
+    name: string;
+    chips: number;
+    bet: number;
+    folded: boolean;
+    cards: Card[];
+    seat: number;
+    isTurn: boolean;
+    hasActed: boolean;
+}
+
+export class Table {
+    id: string;
+    players: (Player | null)[];
+    deck: Deck;
+    communityCards: Card[];
+    pot: number;
+    currentBet: number;
+    dealerIndex: number;
+    turnIndex: number;
+    gameActive: boolean;
+    stage: 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
+    smallBlind: number = 10;
+    bigBlind: number = 20;
+
+    constructor(id: string) {
+        this.id = id;
+        this.players = new Array(6).fill(null); // 6-max table
+        this.deck = new Deck();
+        this.communityCards = [];
+        this.pot = 0;
+        this.currentBet = 0;
+        this.dealerIndex = 0;
+        this.turnIndex = 0;
+        this.gameActive = false;
+        this.stage = 'preflop';
+    }
+
+    addPlayer(player: Player): boolean {
+        const seat = this.players.findIndex(p => p === null);
+        if (seat === -1) return false;
+        player.seat = seat;
+        this.players[seat] = player;
+        return true;
+    }
+
+    removePlayer(id: string) {
+        const index = this.players.findIndex(p => p?.id === id);
+        if (index !== -1) {
+            this.players[index] = null;
+        }
+    }
+
+    // Helper to find next active player from a starting index
+    nextActivePlayer(startIndex: number): number {
+        let i = (startIndex + 1) % 6;
+        let loops = 0;
+        while (loops < 6) {
+            const p = this.players[i];
+            if (p && !p.folded && p.chips > 0) return i;
+            i = (i + 1) % 6;
+            loops++;
+        }
+        return -1; // Should not happen if game is active
+    }
+
+    startGame() {
+        const activeCount = this.players.filter(p => p !== null).length;
+        if (activeCount < 2) return;
+
+        this.gameActive = true;
+        this.deck.reset();
+        this.deck.shuffle();
+        this.communityCards = [];
+        this.pot = 0;
+        this.currentBet = 0;
+        this.stage = 'preflop';
+
+        // Move Dealer Button
+        this.dealerIndex = this.nextActivePlayer(this.dealerIndex);
+
+        // Deal cards
+        this.players.forEach(p => {
+            if (p) {
+                p.cards = [this.deck.deal()!, this.deck.deal()!];
+                p.folded = false;
+                p.bet = 0;
+                p.isTurn = false;
+                p.hasActed = false;
+            }
+        });
+
+        // Post Blinds
+        const sbIndex = this.nextActivePlayer(this.dealerIndex);
+        const bbIndex = this.nextActivePlayer(sbIndex);
+
+        // SB
+        const sbPlayer = this.players[sbIndex]!;
+        const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
+        sbPlayer.chips -= sbAmount;
+        sbPlayer.bet = sbAmount;
+        this.pot += sbAmount;
+
+        // BB
+        const bbPlayer = this.players[bbIndex]!;
+        const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
+        bbPlayer.chips -= bbAmount;
+        bbPlayer.bet = bbAmount;
+        this.pot += bbAmount;
+        this.currentBet = this.bigBlind;
+
+        // Set turn to UTG (player after BB)
+        this.turnIndex = this.nextActivePlayer(bbIndex);
+        if (this.players[this.turnIndex]) {
+            this.players[this.turnIndex]!.isTurn = true;
+        }
+    }
+
+    advanceTurn() {
+        // Check if round is complete
+        if (this.isRoundComplete()) {
+            this.nextStreet();
+            return;
+        }
+
+        let loops = 0;
+        let nextIndex = (this.turnIndex + 1) % 6;
+
+        while (loops < 6) {
+            const p = this.players[nextIndex];
+            if (p && !p.folded && p.chips > 0) {
+                this.turnIndex = nextIndex;
+                p.isTurn = true;
+                return;
+            }
+            nextIndex = (nextIndex + 1) % 6;
+            loops++;
+        }
+        // If no one else to act, next street
+        this.nextStreet();
+    }
+
+    isRoundComplete(): boolean {
+        const activePlayers = this.players.filter(p => p && !p.folded && p.chips > 0);
+        if (activePlayers.length === 0) return true;
+
+        const allActed = activePlayers.every(p => p!.hasActed);
+        const allMatched = activePlayers.every(p => p!.bet === this.currentBet);
+
+        return allActed && allMatched;
+    }
+
+    handleAction(playerId: string, action: 'fold' | 'check' | 'call' | 'raise', amount?: number): boolean {
+        const player = this.players.find(p => p?.id === playerId);
+        if (!player || !player.isTurn) return false;
+
+        if (action === 'fold') {
+            player.folded = true;
+            player.hasActed = true;
+        } else if (action === 'call') {
+            const toCall = this.currentBet - player.bet;
+            if (player.chips >= toCall) {
+                player.chips -= toCall;
+                player.bet += toCall;
+                this.pot += toCall;
+            } else {
+                // All-in call
+                player.bet += player.chips;
+                this.pot += player.chips;
+                player.chips = 0;
+            }
+            player.hasActed = true;
+        } else if (action === 'raise' && amount) {
+            const totalBet = amount;
+            const diff = totalBet - player.bet;
+            if (player.chips >= diff && totalBet > this.currentBet) {
+                player.chips -= diff;
+                player.bet = totalBet;
+                this.pot += diff;
+                this.currentBet = totalBet;
+
+                // Reset hasActed for everyone else because the bet increased!
+                this.players.forEach(p => {
+                    if (p && p.id !== playerId) p.hasActed = false;
+                });
+            }
+            player.hasActed = true;
+        } else if (action === 'check') {
+            if (player.bet < this.currentBet) return false;
+            player.hasActed = true;
+        }
+
+        player.isTurn = false;
+        this.advanceTurn();
+        return true;
+    }
+
+    nextStreet() {
+        this.currentBet = 0;
+        this.players.forEach(p => {
+            if (p) {
+                p.bet = 0;
+                p.hasActed = false;
+            }
+        });
+
+        if (this.stage === 'preflop') {
+            this.stage = 'flop';
+            this.communityCards.push(this.deck.deal()!, this.deck.deal()!, this.deck.deal()!);
+        } else if (this.stage === 'flop') {
+            this.stage = 'turn';
+            this.communityCards.push(this.deck.deal()!);
+        } else if (this.stage === 'turn') {
+            this.stage = 'river';
+            this.communityCards.push(this.deck.deal()!);
+        } else if (this.stage === 'river') {
+            this.stage = 'showdown';
+            this.evaluateWinner();
+            return; // Don't advance turn after showdown
+        }
+
+        // Set turn to SB (or first active after dealer)
+        this.turnIndex = this.dealerIndex; // Will be incremented by nextActivePlayer
+        const next = this.nextActivePlayer(this.turnIndex);
+        this.turnIndex = next;
+        if (this.players[next]) this.players[next]!.isTurn = true;
+    }
+
+    evaluateWinner() {
+        const activePlayers = this.players.filter(p => p && !p.folded);
+        if (activePlayers.length === 0) return;
+
+        const hands = activePlayers.map(p => {
+            const cards = [...p!.cards, ...this.communityCards].map(c => c.toString());
+            const hand = Hand.solve(cards);
+            // @ts-ignore
+            hand.player = p;
+            return hand;
+        });
+
+        const winners = Hand.winners(hands);
+
+        const share = Math.floor(this.pot / winners.length);
+        winners.forEach((w: any) => {
+            // @ts-ignore
+            w.player.chips += share;
+        });
+
+        this.gameActive = false;
+    }
+
+    getForPlayer(playerId: string): any {
+        const state = JSON.parse(JSON.stringify(this)); // Deep copy
+        state.deck = undefined; // Hide deck
+        state.players = state.players.map((p: any) => {
+            if (!p) return null;
+            if (p.id !== playerId && !this.stage.includes('showdown')) {
+                p.cards = null; // Hide cards
+            }
+            return p;
+        });
+        return state;
+    }
+}
