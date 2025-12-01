@@ -73,9 +73,10 @@ export function setupSocketHandlers(io: Server) {
                 }, 5000);
             } else if (table.turnIndex === -1) {
                 // Auto-runout (all-in)
-                console.log(`Auto-runout on table ${tableId}. Next street in 2s...`);
+                console.log(`Auto-runout on table ${tableId}. Stage: ${table.stage}. Next street in 2s...`);
                 setTimeout(async () => {
                     table.nextStreet();
+                    console.log(`Executed nextStreet. New Stage: ${table.stage}, TurnIndex: ${table.turnIndex}`);
                     await broadcastAndCheck(tableId, table);
                 }, 2000);
             }

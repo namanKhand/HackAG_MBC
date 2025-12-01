@@ -233,7 +233,6 @@ export class Table {
             this.stage = 'river';
             this.communityCards.push(this.deck.deal()!);
         } else if (this.stage === 'river') {
-            this.stage = 'showdown';
             this.evaluateWinner();
             return; // Don't advance turn after showdown
         }
@@ -299,6 +298,7 @@ export class Table {
 
         return state;
     }
+
     setPlayerStatus(playerId: string, status: 'active' | 'sitting_out') {
         const player = this.players.find(p => p?.id === playerId);
         if (player) {
