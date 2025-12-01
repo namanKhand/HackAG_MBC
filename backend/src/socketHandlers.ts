@@ -23,7 +23,8 @@ export function setupSocketHandlers(io: Server) {
                 cards: [],
                 seat: -1,
                 isTurn: false,
-                hasActed: false
+                hasActed: false,
+                status: 'active'
             };
 
             if (table.addPlayer(player)) {
@@ -60,6 +61,41 @@ export function setupSocketHandlers(io: Server) {
                     for (const s of sockets) {
                         s.emit("table_state", table.getForPlayer(s.id));
                     }
+
+                    // Check if game ended
+                    if (!table.gameActive) {
+                        console.log(`Game ended on table ${tableId}. Restarting in 5s...`);
+                        setTimeout(async () => {
+                            console.log(`Restarting game on table ${tableId}`);
+                            table.startGame();
+                            const sockets = await io.in(tableId).fetchSockets();
+                            for (const s of sockets) {
+                                s.emit("table_state", table.getForPlayer(s.id));
+                            }
+                        }, 5000);
+                    }
+                }
+            }
+        });
+
+        socket.on("sit_out", async ({ tableId }) => {
+            const table = tables[tableId];
+            if (table) {
+                table.setPlayerStatus(socket.id, 'sitting_out');
+                const sockets = await io.in(tableId).fetchSockets();
+                for (const s of sockets) {
+                    s.emit("table_state", table.getForPlayer(s.id));
+                }
+            }
+        });
+
+        socket.on("back_in", async ({ tableId }) => {
+            const table = tables[tableId];
+            if (table) {
+                table.setPlayerStatus(socket.id, 'active');
+                const sockets = await io.in(tableId).fetchSockets();
+                for (const s of sockets) {
+                    s.emit("table_state", table.getForPlayer(s.id));
                 }
             }
         });

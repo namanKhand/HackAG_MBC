@@ -12,6 +12,7 @@ export interface Player {
     seat: number;
     isTurn: boolean;
     hasActed: boolean;
+    status: 'active' | 'sitting_out';
 }
 
 export class Table {
@@ -27,6 +28,7 @@ export class Table {
     stage: 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
     smallBlind: number = 10;
     bigBlind: number = 20;
+    winners: string[] = [];
 
     constructor(id: string) {
         this.id = id;
@@ -39,6 +41,7 @@ export class Table {
         this.turnIndex = 0;
         this.gameActive = false;
         this.stage = 'preflop';
+        this.winners = [];
     }
 
     addPlayer(player: Player): boolean {
@@ -70,8 +73,11 @@ export class Table {
     }
 
     startGame() {
-        const activeCount = this.players.filter(p => p !== null).length;
-        if (activeCount < 2) return;
+        const activePlayers = this.players.filter(p => p !== null && p.status === 'active' && p.chips > 0);
+        if (activePlayers.length < 2) {
+            this.gameActive = false;
+            return;
+        }
 
         this.gameActive = true;
         this.deck.reset();
@@ -79,16 +85,24 @@ export class Table {
         this.communityCards = [];
         this.pot = 0;
         this.currentBet = 0;
+        this.currentBet = 0;
         this.stage = 'preflop';
+        this.winners = [];
 
         // Move Dealer Button
         this.dealerIndex = this.nextActivePlayer(this.dealerIndex);
 
         // Deal cards
         this.players.forEach(p => {
-            if (p) {
+            if (p && p.status === 'active' && p.chips > 0) {
                 p.cards = [this.deck.deal()!, this.deck.deal()!];
                 p.folded = false;
+                p.bet = 0;
+                p.isTurn = false;
+                p.hasActed = false;
+            } else if (p) {
+                p.cards = [];
+                p.folded = true;
                 p.bet = 0;
                 p.isTurn = false;
                 p.hasActed = false;
@@ -245,6 +259,8 @@ export class Table {
 
         const winners = Hand.winners(hands);
 
+        this.winners = winners.map((w: any) => w.player.id);
+
         const share = Math.floor(this.pot / winners.length);
         winners.forEach((w: any) => {
             // @ts-ignore
@@ -264,6 +280,21 @@ export class Table {
             }
             return p;
         });
+
+        // Calculate hand description for the requesting player
+        const player = this.players.find(p => p?.id === playerId);
+        if (player && player.cards && player.cards.length > 0) {
+            const cards = [...player.cards, ...this.communityCards].map(c => c.toString());
+            const hand = Hand.solve(cards);
+            state.handDescription = hand.name;
+        }
+
         return state;
+    }
+    setPlayerStatus(playerId: string, status: 'active' | 'sitting_out') {
+        const player = this.players.find(p => p?.id === playerId);
+        if (player) {
+            player.status = status;
+        }
     }
 }

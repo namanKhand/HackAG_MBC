@@ -17,7 +17,9 @@ interface Player {
     folded: boolean;
     cards: Card[] | null; // Null if masked
     seat: number;
+    seat: number;
     isTurn: boolean;
+    status: 'active' | 'sitting_out';
 }
 
 interface TableState {
@@ -29,6 +31,8 @@ interface TableState {
     dealerIndex: number;
     gameActive: boolean;
     stage: string;
+    winners?: string[];
+    handDescription?: string;
 }
 
 const CardUI = ({ card }: { card: Card | null }) => {
@@ -56,6 +60,8 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
     const { address } = useAccount();
     const [socket, setSocket] = useState<Socket | null>(null);
     const [table, setTable] = useState<TableState | null>(null);
+    const [raiseAmount, setRaiseAmount] = useState<number>(0);
+    const [showRankings, setShowRankings] = useState(false);
 
     useEffect(() => {
         const newSocket = io('http://localhost:3001');
@@ -68,6 +74,12 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
 
         newSocket.on('table_state', (state: TableState) => {
             setTable(state);
+            // Update raise amount default when turn starts
+            const me = state.players.find(p => p?.id === newSocket.id);
+            if (me?.isTurn) {
+                const minRaise = state.currentBet + 20; // Simplified min raise
+                setRaiseAmount(Math.min(minRaise, me.chips));
+            }
         });
 
         return () => {
@@ -128,6 +140,25 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                         Start Game
                     </button>
                 )}
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => setShowRankings(!showRankings)}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+                    >
+                        Rankings ?
+                    </button>
+                    {me && (
+                        <button
+                            onClick={() => {
+                                if (me.status === 'active') socket?.emit('sit_out', { tableId });
+                                else socket?.emit('back_in', { tableId });
+                            }}
+                            className={`px-4 py-2 rounded-lg font-bold transition-colors ${me.status === 'active' ? 'bg-red-900/50 hover:bg-red-900 text-red-200' : 'bg-green-900/50 hover:bg-green-900 text-green-200'}`}
+                        >
+                            {me.status === 'active' ? 'Sit Out' : 'I\'m Back'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Table Area */}
@@ -177,8 +208,10 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                         <div key={player.id} className={`absolute ${positionClass} flex flex-col items-center transition-all duration-500 ease-in-out`}>
                             {/* Avatar */}
                             <div className={`relative w-24 h-24 rounded-full flex items-center justify-center border-4 
-                                ${player.isTurn ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-110' : 'border-gray-700 bg-gray-900'} 
-                                ${player.folded ? 'opacity-40 grayscale' : ''}
+                                ${player.isTurn ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-110' :
+                                    table.winners?.includes(player.id) ? 'border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.8)] scale-110 ring-4 ring-yellow-200 animate-pulse' :
+                                        'border-gray-700 bg-gray-900'} 
+                                ${player.folded || player.status === 'sitting_out' ? 'opacity-40 grayscale' : ''}
                                 transition-all duration-300 z-20 group`}>
 
                                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-black opacity-90"></div>
@@ -218,6 +251,11 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                                     </>
                                 )}
                             </div>
+                            {player.id === socket?.id && table.handDescription && (
+                                <div className="mt-2 text-yellow-400 font-bold text-sm bg-black/60 px-2 py-1 rounded border border-yellow-400/30">
+                                    {table.handDescription}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -249,12 +287,44 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                         </button>
                     )}
 
-                    <button
-                        onClick={() => handleAction('raise', table.currentBet + 20)} // Min raise logic simplified
-                        className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                    >
-                        RAISE TO ${table.currentBet + 20}
-                    </button>
+                    <div className="flex flex-col gap-2 items-center">
+                        <input
+                            type="range"
+                            min={table.currentBet + 20}
+                            max={me.chips}
+                            value={raiseAmount}
+                            onChange={(e) => setRaiseAmount(Number(e.target.value))}
+                            className="w-48 accent-green-500"
+                        />
+                        <button
+                            onClick={() => handleAction('raise', raiseAmount)}
+                            className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                        >
+                            RAISE TO ${raiseAmount}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Hand Rankings Modal */}
+            {showRankings && (
+                <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setShowRankings(false)}>
+                    <div className="bg-slate-800 p-6 rounded-2xl max-w-2xl w-full border border-white/10 overflow-y-auto max-h-[90vh]">
+                        <h2 className="text-2xl font-bold text-white mb-4">Hand Rankings</h2>
+                        <div className="space-y-2 text-gray-300">
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Royal Flush</span> <span className="text-yellow-400">A-K-Q-J-10 (Same Suit)</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Straight Flush</span> <span className="text-yellow-400">Five Sequential (Same Suit)</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Four of a Kind</span> <span className="text-yellow-400">Four Same Rank</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Full House</span> <span className="text-yellow-400">Three of a Kind + Pair</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Flush</span> <span className="text-yellow-400">Five Same Suit</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Straight</span> <span className="text-yellow-400">Five Sequential</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Three of a Kind</span> <span className="text-yellow-400">Three Same Rank</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Two Pair</span> <span className="text-yellow-400">Two Different Pairs</span></div>
+                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Pair</span> <span className="text-yellow-400">Two Same Rank</span></div>
+                            <div className="flex justify-between"><span>High Card</span> <span className="text-yellow-400">Highest Rank Card</span></div>
+                        </div>
+                        <button className="mt-6 w-full bg-blue-600 py-3 rounded-xl font-bold text-white" onClick={() => setShowRankings(false)}>Close</button>
+                    </div>
                 </div>
             )}
         </div>
