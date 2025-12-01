@@ -53,27 +53,39 @@ export function setupSocketHandlers(io: Server) {
             }
         });
 
-        socket.on("player_action", async ({ tableId, action, amount }: { tableId: string, action: any, amount?: number }) => {
-            const table = tables[tableId];
-            if (table) {
-                if (table.handleAction(socket.id, action, amount)) {
+        // Helper to broadcast state and check for game end / auto-runout
+        const broadcastAndCheck = async (tableId: string, table: Table) => {
+            const sockets = await io.in(tableId).fetchSockets();
+            for (const s of sockets) {
+                s.emit("table_state", table.getForPlayer(s.id));
+            }
+
+            // Check if game ended
+            if (!table.gameActive) {
+                console.log(`Game ended on table ${tableId}. Restarting in 5s...`);
+                setTimeout(async () => {
+                    console.log(`Restarting game on table ${tableId}`);
+                    table.startGame();
                     const sockets = await io.in(tableId).fetchSockets();
                     for (const s of sockets) {
                         s.emit("table_state", table.getForPlayer(s.id));
                     }
+                }, 5000);
+            } else if (table.turnIndex === -1) {
+                // Auto-runout (all-in)
+                console.log(`Auto-runout on table ${tableId}. Next street in 2s...`);
+                setTimeout(async () => {
+                    table.nextStreet();
+                    await broadcastAndCheck(tableId, table);
+                }, 2000);
+            }
+        };
 
-                    // Check if game ended
-                    if (!table.gameActive) {
-                        console.log(`Game ended on table ${tableId}. Restarting in 5s...`);
-                        setTimeout(async () => {
-                            console.log(`Restarting game on table ${tableId}`);
-                            table.startGame();
-                            const sockets = await io.in(tableId).fetchSockets();
-                            for (const s of sockets) {
-                                s.emit("table_state", table.getForPlayer(s.id));
-                            }
-                        }, 5000);
-                    }
+        socket.on("player_action", async ({ tableId, action, amount }: { tableId: string, action: any, amount?: number }) => {
+            const table = tables[tableId];
+            if (table) {
+                if (table.handleAction(socket.id, action, amount)) {
+                    await broadcastAndCheck(tableId, table);
                 }
             }
         });

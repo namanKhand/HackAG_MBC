@@ -240,6 +240,14 @@ export class Table {
 
         // Set turn to SB (or first active after dealer)
         this.turnIndex = this.dealerIndex; // Will be incremented by nextActivePlayer
+
+        // Check if we should auto-runout (0 or 1 player with chips)
+        const playersWithChips = this.players.filter(p => p && !p.folded && p.status === 'active' && p.chips > 0).length;
+        if (playersWithChips < 2) {
+            this.turnIndex = -1;
+            return;
+        }
+
         const next = this.nextActivePlayer(this.turnIndex);
         this.turnIndex = next;
         if (this.players[next]) this.players[next]!.isTurn = true;

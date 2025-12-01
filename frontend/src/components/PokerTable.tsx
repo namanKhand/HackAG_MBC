@@ -230,7 +230,7 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
                                 ${player.chips}
                             </div>
                             {player.bet > 0 && (
-                                <div className="absolute -top-10 bg-yellow-600 px-3 py-1 rounded-lg text-sm text-white font-bold shadow-lg animate-bounce border border-yellow-400/50">
+                                <div className="absolute -top-10 bg-yellow-600 px-3 py-1 rounded-lg text-sm text-white font-bold shadow-lg animate-bounce border border-yellow-400/50 z-50">
                                     ${player.bet}
                                 </div>
                             )}
