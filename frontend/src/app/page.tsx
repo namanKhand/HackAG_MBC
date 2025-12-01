@@ -51,7 +51,7 @@ export default function Home() {
           placeholder="Enter Display Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="p-2 rounded text-black mr-2"
+          className="p-2 rounded text-white bg-slate-700 mr-2"
         />
       </div>
 

@@ -225,7 +225,7 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
 
             {/* Controls */}
             {myTurn && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 bg-black/90 p-6 rounded-3xl backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-50 animate-slide-up">
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-4 bg-black/90 p-6 rounded-3xl backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-50 animate-slide-up">
                     <button
                         onClick={() => handleAction('fold')}
                         className="bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
