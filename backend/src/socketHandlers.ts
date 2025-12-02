@@ -146,11 +146,14 @@ export function setupSocketHandlers(io: Server) {
         socket.on("start_game", async ({ tableId }) => {
             const table = tables[tableId];
             if (table) {
-                table.startGame();
-
-                const sockets = await io.in(tableId).fetchSockets();
-                for (const s of sockets) {
-                    s.emit("table_state", table.getForPlayer(s.id));
+                const result = table.startGame();
+                if (result.success) {
+                    const sockets = await io.in(tableId).fetchSockets();
+                    for (const s of sockets) {
+                        s.emit("table_state", table.getForPlayer(s.id));
+                    }
+                } else {
+                    socket.emit("error", result.error || "Failed to start game");
                 }
             }
         });

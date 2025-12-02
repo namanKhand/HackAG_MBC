@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAccount } from 'wagmi';
+import { useRouter } from 'next/navigation';
 
 import { useBalance } from 'wagmi';
 import { USDC_ADDRESS } from '../constants';
@@ -76,6 +77,7 @@ export default function PokerTable({
     initialTxHash?: string;
 }) {
     const { address } = useAccount();
+    const router = useRouter();
     const { data: balanceData } = useBalance({
         address: address,
         token: USDC_ADDRESS as `0x${string}`,
@@ -122,6 +124,10 @@ export default function PokerTable({
                 const minRaise = state.currentBet + 20; // Simplified min raise
                 setRaiseAmount(Math.min(minRaise, me.chips));
             }
+        });
+
+        newSocket.on('error', (msg: string) => {
+            alert(msg);
         });
 
         return () => {
@@ -387,7 +393,16 @@ export default function PokerTable({
             {/* Buy-in Modal */}
             {showBuyInModal && (
                 <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4">
-                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-8 rounded-3xl max-w-md w-full border border-white/10 shadow-2xl text-center">
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-8 rounded-3xl max-w-md w-full border border-white/10 shadow-2xl text-center relative">
+                        <button
+                            onClick={() => {
+                                setShowBuyInModal(false);
+                                router.push('/lobby');
+                            }}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                        >
+                            ✕
+                        </button>
                         <h2 className="text-3xl font-bold text-white mb-2">Buy In</h2>
                         <p className="text-gray-400 mb-2">Select your buy-in amount to join the table.</p>
                         {mode === 'real' && (

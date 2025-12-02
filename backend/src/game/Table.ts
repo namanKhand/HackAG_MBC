@@ -82,11 +82,11 @@ export class Table {
         return -1; // Should not happen if game is active
     }
 
-    startGame() {
+    startGame(): { success: boolean, error?: string } {
         const activePlayers = this.players.filter(p => p !== null && p.status === 'active' && p.chips > 0);
         if (activePlayers.length < 2) {
             this.gameActive = false;
-            return;
+            return { success: false, error: "Not enough players (min 2)" };
         }
 
         this.gameActive = true;
@@ -151,6 +151,7 @@ export class Table {
         if (this.players[this.turnIndex]) {
             this.players[this.turnIndex]!.isTurn = true;
         }
+        return { success: true };
     }
 
     advanceTurn() {
