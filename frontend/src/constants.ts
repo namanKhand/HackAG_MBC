@@ -1,5 +1,5 @@
-export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
-export const MIDDLEMAN_VAULT_ADDRESS = process.env.NEXT_PUBLIC_MIDDLEMAN_VAULT_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6';
+export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Base Mainnet USDC
+export const MIDDLEMAN_VAULT_ADDRESS = process.env.NEXT_PUBLIC_MIDDLEMAN_VAULT_ADDRESS || '0xe76891e4be5dB3AAD26a66211e150A392c488eF4'; // Base Mainnet Vault
 
 export const TABLES = [
     { id: 'micro', name: 'Micro Stakes', stakes: '0.01/0.02 USDC', minBuyIn: 0.1, maxBuyIn: 10 },

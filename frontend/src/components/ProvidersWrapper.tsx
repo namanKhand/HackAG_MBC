@@ -1,12 +1,24 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { ReactNode } from 'react';
-
-const Providers = dynamic(() => import('../app/providers').then(mod => mod.Providers), {
-    ssr: false,
-});
+import { Providers } from '../app/providers';
+import ErrorBoundary from './ErrorBoundary';
+import { useState, useEffect, ReactNode } from 'react';
 
 export function ProvidersWrapper({ children }: { children: ReactNode }) {
-    return <Providers>{children}</Providers>;
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading Providers...</div>;
+    }
+
+    return (
+        <ErrorBoundary>
+            <Providers>{children}</Providers>
+        </ErrorBoundary>
+    );
 }
