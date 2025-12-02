@@ -40,6 +40,20 @@ export class Database {
                 three_bet_opportunity INTEGER DEFAULT 0
             );
 
+            CREATE TABLE IF NOT EXISTS play_money_stats (
+                account_id INTEGER PRIMARY KEY,
+                hands_played INTEGER DEFAULT 0,
+                hands_won INTEGER DEFAULT 0,
+                chips_won INTEGER DEFAULT 0,
+                pfr_count INTEGER DEFAULT 0,
+                pfr_opportunity INTEGER DEFAULT 0,
+                vpip_count INTEGER DEFAULT 0,
+                vpip_opportunity INTEGER DEFAULT 0,
+                three_bet_count INTEGER DEFAULT 0,
+                three_bet_opportunity INTEGER DEFAULT 0,
+                FOREIGN KEY(account_id) REFERENCES accounts(id)
+            );
+
             CREATE TABLE IF NOT EXISTS game_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 table_id TEXT,
@@ -55,8 +69,20 @@ export class Database {
                 address TEXT,
                 net_profit INTEGER,
                 hand_description TEXT,
+                is_real_money BOOLEAN DEFAULT 1,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(game_id) REFERENCES game_history(id)
+            );
+            CREATE TABLE IF NOT EXISTS table_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_id TEXT,
+                account_id INTEGER,
+                buy_in INTEGER,
+                cash_out INTEGER,
+                net_profit INTEGER,
+                start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                end_time DATETIME,
+                FOREIGN KEY(account_id) REFERENCES accounts(id)
             );
         `);
     }
@@ -117,7 +143,7 @@ export class Database {
         return user;
     }
 
-    async updateUserStats(address: string, stats: {
+    async updateUserStats(identifier: string | number, stats: {
         hands_played?: number,
         hands_won?: number,
         chips_won?: number,
@@ -127,7 +153,7 @@ export class Database {
         vpip_opportunity?: number,
         three_bet_count?: number,
         three_bet_opportunity?: number
-    }) {
+    }, mode: 'real' | 'play' = 'real') {
         if (!this.db) throw new Error("DB not initialized");
 
         const updates: string[] = [];
@@ -138,9 +164,20 @@ export class Database {
             values.push(value);
         });
 
-        values.push(address);
-
-        await this.db.run(`UPDATE users SET ${updates.join(', ')} WHERE address = ?`, ...values);
+        if (mode === 'real') {
+            // Identifier is address string
+            values.push(identifier);
+            await this.db.run(`UPDATE users SET ${updates.join(', ')} WHERE address = ?`, ...values);
+        } else {
+            // Identifier is accountId number
+            // Ensure record exists first
+            const exists = await this.db.get('SELECT * FROM play_money_stats WHERE account_id = ?', identifier);
+            if (!exists) {
+                await this.db.run('INSERT INTO play_money_stats (account_id) VALUES (?)', identifier);
+            }
+            values.push(identifier);
+            await this.db.run(`UPDATE play_money_stats SET ${updates.join(', ')} WHERE account_id = ?`, ...values);
+        }
     }
 
     async addGameHistory(gameData: {
@@ -161,12 +198,37 @@ export class Database {
         game_id: number,
         address: string,
         net_profit: number,
-        hand_description: string
+        hand_description: string,
+        is_real_money: boolean
     }) {
         if (!this.db) throw new Error("DB not initialized");
         await this.db.run(
-            'INSERT INTO player_game_history (game_id, address, net_profit, hand_description) VALUES (?, ?, ?, ?)',
-            historyData.game_id, historyData.address, historyData.net_profit, historyData.hand_description
+            'INSERT INTO player_game_history (game_id, address, net_profit, hand_description, is_real_money) VALUES (?, ?, ?, ?, ?)',
+            historyData.game_id, historyData.address, historyData.net_profit, historyData.hand_description, historyData.is_real_money
+        );
+    }
+
+    async createTableSession(tableId: string, accountId: number, buyIn: number): Promise<number> {
+        if (!this.db) throw new Error("DB not initialized");
+        const result = await this.db.run(
+            'INSERT INTO table_sessions (table_id, account_id, buy_in) VALUES (?, ?, ?)',
+            tableId, accountId, buyIn
+        );
+        return result.lastID!;
+    }
+
+    async updateTableSession(sessionId: number, cashOut: number) {
+        if (!this.db) throw new Error("DB not initialized");
+
+        // Calculate net profit
+        const session = await this.db.get('SELECT buy_in FROM table_sessions WHERE id = ?', sessionId);
+        if (!session) return;
+
+        const netProfit = cashOut - session.buy_in;
+
+        await this.db.run(
+            'UPDATE table_sessions SET cash_out = ?, net_profit = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?',
+            cashOut, netProfit, sessionId
         );
     }
 
@@ -177,38 +239,58 @@ export class Database {
         // Simplified: Return history where user won.
         return await this.db.all('SELECT * FROM player_game_history WHERE address = ? ORDER BY timestamp DESC LIMIT 50', address);
     }
-    async getAccountStats(accountId: number) {
+    async getAccountStats(accountId: number, mode: 'real' | 'play' = 'real') {
         if (!this.db) throw new Error("DB not initialized");
-        // Aggregate stats from all wallets linked to this account
-        // Also include stats from users table where account_id matches
-        const stats = await this.db.get(`
-            SELECT 
-                SUM(hands_played) as hands_played,
-                SUM(hands_won) as hands_won,
-                SUM(chips_won) as chips_won,
-                SUM(pfr_count) as pfr_count,
-                SUM(pfr_opportunity) as pfr_opportunity,
-                SUM(vpip_count) as vpip_count,
-                SUM(vpip_opportunity) as vpip_opportunity,
-                SUM(three_bet_count) as three_bet_count,
-                SUM(three_bet_opportunity) as three_bet_opportunity
-            FROM users 
-            WHERE account_id = ?
-        `, accountId);
-        return stats;
+
+        if (mode === 'real') {
+            // Aggregate stats from all wallets linked to this account
+            // Also include stats from users table where account_id matches
+            const stats = await this.db.get(`
+                SELECT 
+                    SUM(hands_played) as hands_played,
+                    SUM(hands_won) as hands_won,
+                    SUM(chips_won) as chips_won,
+                    SUM(pfr_count) as pfr_count,
+                    SUM(pfr_opportunity) as pfr_opportunity,
+                    SUM(vpip_count) as vpip_count,
+                    SUM(vpip_opportunity) as vpip_opportunity,
+                    SUM(three_bet_count) as three_bet_count,
+                    SUM(three_bet_opportunity) as three_bet_opportunity
+                FROM users 
+                WHERE account_id = ?
+            `, accountId);
+            return stats;
+        } else {
+            // Get stats from play_money_stats table
+            return await this.db.get('SELECT * FROM play_money_stats WHERE account_id = ?', accountId);
+        }
     }
 
-    async getAccountHistory(accountId: number) {
+    async getAccountHistory(accountId: number, mode: 'real' | 'play' = 'real') {
         if (!this.db) throw new Error("DB not initialized");
-        // Get history for all wallets linked to this account
-        return await this.db.all(`
-            SELECT h.* 
-            FROM player_game_history h
-            JOIN users u ON h.address = u.address
-            WHERE u.account_id = ?
-            ORDER BY h.timestamp DESC 
-            LIMIT 50
-        `, accountId);
+
+        if (mode === 'real') {
+            // Get history for all wallets linked to this account
+            return await this.db.all(`
+                SELECT h.* 
+                FROM player_game_history h
+                JOIN users u ON h.address = u.address
+                WHERE u.account_id = ? AND h.is_real_money = 1
+                ORDER BY h.timestamp DESC 
+                LIMIT 50
+            `, accountId);
+        } else {
+            // For play money, we use the username as the address identifier in player_game_history
+            const account = await this.getAccountById(accountId);
+            if (!account) return [];
+
+            return await this.db.all(`
+                SELECT * FROM player_game_history 
+                WHERE address = ? AND is_real_money = 0
+                ORDER BY timestamp DESC
+                LIMIT 50
+            `, account.username);
+        }
     }
 }
 

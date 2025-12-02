@@ -6,10 +6,14 @@ import { db } from '../database';
 export interface Player {
     id: string; // Socket ID
     address?: string; // Wallet address
+    accountId?: number; // Account ID for stats
+    sessionId?: number; // Table session ID
     name: string;
     chips: number;
     startHandChips: number; // Snapshot of chips at start of hand
-    bet: number;
+    totalBuyIn: number; // Total chips bought in this session
+    bet: number; // Current street bet
+    handContribution: number; // Total contribution to the pot in this hand
     folded: boolean;
     cards: Card[];
     seat: number;
@@ -31,6 +35,7 @@ export interface TableConfig {
     smallBlind: number;
     bigBlind: number;
     isPublic: boolean;
+    isRealMoney?: boolean;
     hostId?: string;
 }
 
@@ -58,7 +63,8 @@ export class Table {
                 id: configOrId,
                 smallBlind: 10,
                 bigBlind: 20,
-                isPublic: true
+                isPublic: true,
+                isRealMoney: false
             };
         } else {
             this.id = configOrId.id;
@@ -83,7 +89,18 @@ export class Table {
     addPlayer(player: Player): boolean {
         const seat = this.players.findIndex(p => p === null);
         if (seat === -1) return false;
+
+        // Restore totalBuyIn from persistent ledger
+        const uniqueId = this.config.isRealMoney ? player.address : player.name;
+        if (uniqueId && this.ledger[uniqueId]) {
+            player.totalBuyIn = this.ledger[uniqueId];
+        } else {
+            // Initialize if new
+            if (uniqueId) this.ledger[uniqueId] = player.totalBuyIn;
+        }
+
         player.seat = seat;
+        player.handContribution = 0; // Initialize
         this.players[seat] = player;
         return true;
     }
@@ -126,7 +143,6 @@ export class Table {
         this.communityCards = [];
         this.pot = 0;
         this.currentBet = 0;
-        this.currentBet = 0;
         this.stage = 'preflop';
         this.winners = [];
 
@@ -140,18 +156,26 @@ export class Table {
                 p.cards = [this.deck.deal()!, this.deck.deal()!];
                 p.folded = false;
                 p.bet = 0;
+                p.handContribution = 0; // Reset contribution
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
 
                 // Update hands played
-                if (p.address) {
-                    db.updateUserStats(p.address, { hands_played: 1 });
+                console.log(`[Table ${this.id}] Updating hands_played for ${p.name} (RealMoney: ${this.config.isRealMoney})`);
+                if (this.config.isRealMoney && p.address) {
+                    db.updateUserStats(p.address, { hands_played: 1 }, 'real');
+                } else if (!this.config.isRealMoney && p.accountId) {
+                    console.log(`[Table ${this.id}] Updating Play Money stats for account ${p.accountId}`);
+                    db.updateUserStats(p.accountId, { hands_played: 1 }, 'play');
+                } else {
+                    console.warn(`[Table ${this.id}] Could not update stats for ${p.name} - Missing address/accountId`);
                 }
             } else if (p) {
                 p.cards = [];
                 p.folded = true;
                 p.bet = 0;
+                p.handContribution = 0;
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
@@ -167,6 +191,7 @@ export class Table {
         const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
         sbPlayer.chips -= sbAmount;
         sbPlayer.bet = sbAmount;
+        sbPlayer.handContribution += sbAmount;
         this.pot += sbAmount;
 
         // BB
@@ -174,6 +199,7 @@ export class Table {
         const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
         bbPlayer.chips -= bbAmount;
         bbPlayer.bet = bbAmount;
+        bbPlayer.handContribution += bbAmount;
         this.pot += bbAmount;
         this.currentBet = this.bigBlind;
 
@@ -228,31 +254,55 @@ export class Table {
             player.hasActed = true;
         } else if (action === 'call') {
             const toCall = this.currentBet - player.bet;
+            let contribution = 0;
             if (player.chips >= toCall) {
+                contribution = toCall;
                 player.chips -= toCall;
                 player.bet += toCall;
-                this.pot += toCall;
             } else {
                 // All-in call
+                contribution = player.chips;
                 player.bet += player.chips;
-                this.pot += player.chips;
                 player.chips = 0;
             }
+            player.handContribution += contribution;
+            this.pot += contribution;
             player.hasActed = true;
         } else if (action === 'raise' && amount) {
             const totalBet = amount;
             const diff = totalBet - player.bet;
-            if (player.chips >= diff && totalBet > this.currentBet) {
+            let contribution = 0;
+
+            if (player.chips >= diff) {
+                // Normal raise or exact all-in
+                contribution = diff;
                 player.chips -= diff;
                 player.bet = totalBet;
-                this.pot += diff;
-                this.currentBet = totalBet;
+                if (totalBet > this.currentBet) {
+                    this.currentBet = totalBet;
+                    // Reset hasActed for everyone else
+                    this.players.forEach(p => {
+                        if (p && p.id !== playerId) p.hasActed = false;
+                    });
+                }
+            } else {
+                // All-in Raise (Partial)
+                // Player puts in everything they have
+                contribution = player.chips;
+                player.bet += player.chips;
+                player.chips = 0;
 
-                // Reset hasActed for everyone else because the bet increased!
-                this.players.forEach(p => {
-                    if (p && p.id !== playerId) p.hasActed = false;
-                });
+                // If this all-in raise is greater than current bet, update current bet
+                // Note: In some rules, a short all-in doesn't reopen betting, but for simplicity here we update currentBet if it's higher
+                if (player.bet > this.currentBet) {
+                    this.currentBet = player.bet;
+                    this.players.forEach(p => {
+                        if (p && p.id !== playerId) p.hasActed = false;
+                    });
+                }
             }
+            player.handContribution += contribution;
+            this.pot += contribution;
             player.hasActed = true;
         } else if (action === 'check') {
             if (player.bet < this.currentBet) return false;
@@ -265,7 +315,6 @@ export class Table {
             player.stats.vpip = true;
             if (this.stage === 'preflop') {
                 player.stats.pfr = true;
-                // Simple 3-bet detection: if current bet > big blind, it's a 3-bet (or 4-bet etc)
                 if (this.currentBet > this.bigBlind) {
                     player.stats.threeBet = true;
                 }
@@ -321,10 +370,12 @@ export class Table {
     }
 
     evaluateWinner() {
+        // 1. Identify active players (not folded)
         const activePlayers = this.players.filter(p => p && !p.folded);
         if (activePlayers.length === 0) return;
 
-        const hands = activePlayers.map(p => {
+        // 2. Calculate Hand Strength for all active players
+        const playerHands = activePlayers.map(p => {
             const cards = [...p!.cards, ...this.communityCards].map(c => c.toString());
             const hand = Hand.solve(cards);
             // @ts-ignore
@@ -332,72 +383,148 @@ export class Table {
             return hand;
         });
 
-        const winners = Hand.winners(hands);
-
-        this.winners = winners.map((w: any) => w.player.id);
-
-        const share = Math.floor(this.pot / winners.length);
-        winners.forEach((w: any) => {
-            // @ts-ignore
-            w.player.chips += share;
-
-            // Persist Winner Stats
-            if (w.player.address) {
-                db.updateUserStats(w.player.address, {
-                    hands_won: 1,
-                    chips_won: share
-                });
-            }
+        // 3. Side Pot Logic
+        // Sort hands best first
+        playerHands.sort((a: any, b: any) => {
+            return a.compare(b); // Descending order (best first) - pokersolver returns -1 if a > b
         });
+
+        let remainingPot = this.pot;
+        const winners: string[] = [];
+
+        // Distribute pot
+        while (remainingPot > 0 && playerHands.length > 0) {
+            // Get all contributions from ALL players (even folded ones contributed to the pot)
+            const allContributors = this.players.filter(p => p && p.handContribution > 0) as Player[];
+
+            // Unique sorted contribution levels
+            const levels = Array.from(new Set(allContributors.map(p => p.handContribution))).sort((a, b) => a - b);
+
+            let prevLevel = 0;
+
+            for (const level of levels) {
+                const diff = level - prevLevel;
+                if (diff <= 0) continue;
+
+                // Calculate pot chunk for this level
+                let chunk = 0;
+                const contributorsAtLevel = allContributors.filter(p => p.handContribution >= level);
+                chunk = diff * contributorsAtLevel.length;
+
+                // Who is eligible to win this chunk?
+                // Active players who contributed at least this level.
+                const eligiblePlayers = activePlayers.filter(p => p!.handContribution >= level);
+
+                if (eligiblePlayers.length > 0) {
+                    // Find best hand among eligible
+                    const eligibleHands = playerHands.filter((h: any) => eligiblePlayers.some(p => p!.id === h.player.id));
+
+                    const bestEligibleHand = eligibleHands[0];
+                    const chunkWinners = eligibleHands.filter((h: any) => h.compare(bestEligibleHand) === 0);
+
+                    // Distribute chunk
+                    const share = Math.floor(chunk / chunkWinners.length);
+                    chunkWinners.forEach((w: any) => {
+                        w.player.chips += share;
+
+                        // Track stats
+                        if (!winners.includes(w.player.id)) winners.push(w.player.id);
+
+                        // Persist Winner Stats (Incremental)
+                        const p = w.player;
+                        if (this.config.isRealMoney && p.address) {
+                            db.updateUserStats(p.address, { hands_won: 1, chips_won: share }, 'real');
+                        } else if (!this.config.isRealMoney && p.accountId) {
+                            db.updateUserStats(p.accountId, { hands_won: 1, chips_won: share }, 'play');
+                        }
+                    });
+                } else {
+                    // Fallback: Give to best active hand overall if no one at this level is active (should be rare/impossible in normal play)
+                    if (activePlayers.length > 0) {
+                        const bestOverall = playerHands[0];
+                        const bestWinners = playerHands.filter((h: any) => h.compare(bestOverall) === 0);
+                        const share = Math.floor(chunk / bestWinners.length);
+                        bestWinners.forEach((w: any) => w.player.chips += share);
+                    }
+                }
+
+                prevLevel = level;
+            }
+
+            // Break after processing levels (we distributed the whole pot via chunks)
+            break;
+        }
+
+        this.winners = winners;
 
         // Persist Player Stats (PFR, VPIP, 3-Bet) & Game History
         activePlayers.forEach(p => {
-            if (p && p.address) {
-                db.updateUserStats(p.address, {
+            if (p) {
+                const stats = {
                     pfr_count: p.stats.pfr ? 1 : 0,
                     pfr_opportunity: 1,
                     vpip_count: p.stats.vpip ? 1 : 0,
                     vpip_opportunity: 1,
                     three_bet_count: p.stats.threeBet ? 1 : 0,
                     three_bet_opportunity: p.stats.threeBetOpp ? 1 : 0
-                });
+                };
+
+                if (this.config.isRealMoney && p.address) {
+                    db.updateUserStats(p.address, stats, 'real');
+                } else if (!this.config.isRealMoney && p.accountId) {
+                    db.updateUserStats(p.accountId, stats, 'play');
+                }
             }
         });
 
         // Persist Game History for ALL active players (winners and losers)
-        // We need the game_id from the main game_history entry.
-        // Since we don't have it easily here without refactoring addGameHistory to return ID,
-        // let's do it properly.
-
-        // 1. Create Game History Entry
         const winner = this.players.find(p => p?.id === this.winners[0]);
-        if (winner && winner.address) {
-            db.addGameHistory({
-                table_id: this.id,
-                winner_address: winner.address,
-                pot_size: this.pot,
-                hand_description: this.getForPlayer(winner.id).handDescription || "Winner"
-            }).then(gameId => {
-                // 2. Create Player Game History Entries
-                this.players.forEach(p => {
-                    if (p && p.address && !p.status.includes('sitting_out')) {
-                        const netProfit = p.chips - p.startHandChips;
-                        let handDesc = "Folded";
-                        if (!p.folded) {
-                            const state = this.getForPlayer(p.id);
-                            handDesc = state.handDescription || "High Card";
-                        }
+        if (winner) {
+            // Determine winner address/identifier for history
+            const winnerIdentifier = this.config.isRealMoney ? winner.address : winner.name;
 
-                        db.addPlayerGameHistory({
-                            game_id: gameId,
-                            address: p.address,
-                            net_profit: netProfit,
-                            hand_description: handDesc
-                        });
-                    }
+            if (winnerIdentifier) {
+                db.addGameHistory({
+                    table_id: this.id,
+                    winner_address: winnerIdentifier,
+                    pot_size: this.pot,
+                    hand_description: this.getForPlayer(winner.id).handDescription || "Winner"
+                }).then(gameId => {
+                    // 2. Create Player Game History Entries
+                    this.players.forEach(p => {
+                        if (p && !p.status.includes('sitting_out')) {
+                            const netProfit = p.chips - p.startHandChips;
+                            let handDesc = "Folded";
+                            if (!p.folded) {
+                                const state = this.getForPlayer(p.id);
+                                handDesc = state.handDescription || "High Card";
+                            }
+
+                            // Identifier for history
+                            const pIdentifier = this.config.isRealMoney ? p.address : p.name;
+
+                            if (pIdentifier) {
+                                db.addPlayerGameHistory({
+                                    game_id: gameId,
+                                    address: pIdentifier,
+                                    net_profit: netProfit,
+                                    hand_description: handDesc,
+                                    is_real_money: !!this.config.isRealMoney
+                                });
+                            }
+                        }
+                    });
                 });
-            });
+            }
         }
+
+        // Check for busted players
+        this.players.forEach((p, index) => {
+            if (p && p.chips === 0) {
+                console.log(`[Table ${this.id}] Player ${p.name} busted!`);
+                this.players[index] = null; // Remove from table
+            }
+        });
 
         this.gameActive = false;
     }
@@ -435,7 +562,13 @@ export class Table {
         const player = this.players.find(p => p?.id === playerId);
         if (player) {
             player.chips += amount;
-            this.ledger[playerId] = (this.ledger[playerId] || 0) + amount;
+            player.totalBuyIn += amount; // Track total buy-in
+
+            // Update persistent ledger
+            const uniqueId = this.config.isRealMoney ? player.address : player.name;
+            if (uniqueId) {
+                this.ledger[uniqueId] = (this.ledger[uniqueId] || 0) + amount;
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,8 @@ interface Player {
     seat: number;
     isTurn: boolean;
     status: 'active' | 'sitting_out';
+    totalBuyIn?: number;
+    startHandChips?: number;
 }
 
 interface TableState {
@@ -92,8 +94,15 @@ export default function PokerTable({
     const [showBuyInModal, setShowBuyInModal] = useState(!initialBuyIn);
     const [buyInAmount, setBuyInAmount] = useState(initialBuyIn || maxBuyIn);
     const [showRankings, setShowRankings] = useState(false);
+    const [showLedger, setShowLedger] = useState(false);
 
     const [preAction, setPreAction] = useState<'none' | 'checkFold' | 'callAny'>('none');
+    const preActionRef = useRef<'none' | 'checkFold' | 'callAny'>('none');
+
+    // Sync ref with state
+    useEffect(() => {
+        preActionRef.current = preAction;
+    }, [preAction]);
 
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
@@ -135,23 +144,22 @@ export default function PokerTable({
             const me = state.players.find(p => p?.id === newSocket.id);
             if (me?.isTurn) {
                 const minRaise = state.currentBet + 20; // Simplified min raise
-                setRaiseAmount(Math.min(minRaise, me.chips));
+                setRaiseAmount(Math.min(minRaise, me.chips + me.bet));
 
-                // Handle Pre-Actions
-                if (preAction === 'checkFold') {
+                // Handle Pre-Actions using REF to avoid stale closure
+                const currentPreAction = preActionRef.current;
+
+                if (currentPreAction === 'checkFold') {
                     if (state.currentBet > me.bet) {
                         newSocket.emit('player_action', { tableId, action: 'fold' });
                     } else {
                         newSocket.emit('player_action', { tableId, action: 'check' });
                     }
                     setPreAction('none');
-                } else if (preAction === 'callAny') {
+                } else if (currentPreAction === 'callAny') {
                     newSocket.emit('player_action', { tableId, action: 'call' });
                     setPreAction('none');
                 }
-            } else {
-                // Reset pre-action if round changes or something invalidates it? 
-                // For now, keep it simple.
             }
         });
 
@@ -189,6 +197,13 @@ export default function PokerTable({
         }
     };
 
+    const handleLeaveTable = () => {
+        if (socket) {
+            socket.emit('leave_table', { tableId });
+            router.push(`/lobby?mode=${mode}`);
+        }
+    };
+
     const startGame = () => {
         console.log('Start Game button clicked');
         if (socket) {
@@ -199,9 +214,23 @@ export default function PokerTable({
         }
     };
 
+    const me = table?.players.find(p => p?.id === socket?.id);
+
+    // DEBUG LOGGING
+    useEffect(() => {
+        if (table) {
+            console.log('Table State:', table);
+            console.log('My Socket ID:', socket?.id);
+            console.log('Me Object:', me);
+            if (me) {
+                console.log('Total BuyIn:', me.totalBuyIn);
+                console.log('Start Hand Chips:', me.startHandChips);
+            }
+        }
+    }, [table, me, socket?.id]);
+
     if (!table && !showBuyInModal) return <div className="flex items-center justify-center h-screen text-white font-mono animate-pulse">Loading table...</div>;
 
-    const me = table?.players.find(p => p?.id === socket?.id);
     const mySeat = me ? me.seat : 0;
     const myTurn = me?.isTurn;
     const canCheck = me && table && me.bet === table.currentBet;
@@ -252,19 +281,73 @@ export default function PokerTable({
                             >
                                 Rankings ?
                             </button>
-                            {me && (
+                            {!me && (
                                 <button
-                                    onClick={() => {
-                                        if (me.status === 'active') socket?.emit('sit_out', { tableId });
-                                        else socket?.emit('back_in', { tableId });
-                                    }}
-                                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${me.status === 'active' ? 'bg-red-900/50 hover:bg-red-900 text-red-200' : 'bg-green-900/50 hover:bg-green-900 text-green-200'}`}
+                                    onClick={() => setShowBuyInModal(true)}
+                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg animate-pulse"
                                 >
-                                    {me.status === 'active' ? 'Sit Out' : 'I\'m Back'}
+                                    Join Table
                                 </button>
+                            )}
+                            {me && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            if (me.status === 'active') socket?.emit('sit_out', { tableId });
+                                            else socket?.emit('back_in', { tableId });
+                                        }}
+                                        className={`px-4 py-2 rounded-lg font-bold transition-colors ${me.status === 'active' ? 'bg-yellow-900/50 hover:bg-yellow-900 text-yellow-200' : 'bg-green-900/50 hover:bg-green-900 text-green-200'}`}
+                                    >
+                                        {me.status === 'active' ? 'Sit Out' : 'I\'m Back'}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLedger(!showLedger)}
+                                        className="bg-blue-900/50 hover:bg-blue-900 text-blue-200 px-4 py-2 rounded-lg font-bold transition-colors"
+                                    >
+                                        Ledger
+                                    </button>
+                                    <button
+                                        onClick={handleLeaveTable}
+                                        className="bg-red-900/50 hover:bg-red-900 text-red-200 px-4 py-2 rounded-lg font-bold transition-colors"
+                                    >
+                                        Leave Table
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
+
+                    {/* Session Ledger Popup */}
+                    {showLedger && me && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowLedger(false)}>
+                            <div className="bg-gray-900 p-6 rounded-2xl border border-white/10 shadow-2xl w-80 transform transition-all scale-100" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-yellow-400">Session Ledger</h3>
+                                    <button onClick={() => setShowLedger(false)} className="text-gray-400 hover:text-white transition-colors">
+                                        ✕
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
+                                        <span className="text-gray-400">Total Buy-In</span>
+                                        <span className="font-mono text-lg text-white">${me.totalBuyIn ?? me.startHandChips ?? 0}</span>
+                                    </div>
+                                    <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
+                                        <span className="text-gray-400">Current Chips</span>
+                                        <span className="font-mono text-lg text-blue-400">${me.chips}</span>
+                                    </div>
+                                    <div className="border-t border-white/10 my-2"></div>
+                                    <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
+                                        <span className="text-gray-400">Net Profit</span>
+                                        <span className={`font-mono text-xl font-bold ${(me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {(me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)) >= 0 ? '+' : ''}
+                                            ${me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Table Area */}
                     <div className="relative h-[600px] bg-gradient-to-b from-gray-900 to-black rounded-[200px] border-[20px] border-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center mx-auto mb-32 mt-12 w-[90%]">
@@ -414,12 +497,12 @@ export default function PokerTable({
                                                 </button>
                                             )}
 
-                                            {me.chips > table.currentBet && (
+                                            {me.chips + me.bet > table.currentBet && (
                                                 <div className="flex flex-col gap-1 items-center bg-black/40 p-1 rounded-xl border border-white/5">
                                                     <input
                                                         type="range"
-                                                        min={Math.min(table.currentBet + 20, me.chips)}
-                                                        max={me.chips}
+                                                        min={Math.min(table.currentBet + 20, me.chips + me.bet)}
+                                                        max={me.chips + me.bet}
                                                         value={raiseAmount}
                                                         onChange={(e) => setRaiseAmount(Number(e.target.value))}
                                                         className="w-24 accent-green-500 h-1"
@@ -428,7 +511,7 @@ export default function PokerTable({
                                                         onClick={() => handleAction('raise', raiseAmount)}
                                                         className="bg-green-600 hover:bg-green-500 text-white px-2 py-2 rounded-lg font-bold transition-all shadow-lg active:scale-95 text-xs w-full whitespace-nowrap"
                                                     >
-                                                        {raiseAmount === me.chips ? 'ALL IN' : `RAISE $${raiseAmount}`}
+                                                        {raiseAmount === me.chips + me.bet ? 'ALL IN' : `RAISE $${raiseAmount}`}
                                                     </button>
                                                 </div>
                                             )}
@@ -460,21 +543,40 @@ export default function PokerTable({
             {/* Hand Rankings Modal */}
             {showRankings && (
                 <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setShowRankings(false)}>
-                    <div className="bg-slate-800 p-6 rounded-2xl max-w-2xl w-full border border-white/10 overflow-y-auto max-h-[90vh]">
-                        <h2 className="text-2xl font-bold text-white mb-4">Hand Rankings</h2>
-                        <div className="space-y-2 text-gray-300">
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Royal Flush</span> <span className="text-yellow-400">A-K-Q-J-10 (Same Suit)</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Straight Flush</span> <span className="text-yellow-400">Five Sequential (Same Suit)</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Four of a Kind</span> <span className="text-yellow-400">Four Same Rank</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Full House</span> <span className="text-yellow-400">Three of a Kind + Pair</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Flush</span> <span className="text-yellow-400">Five Same Suit</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Straight</span> <span className="text-yellow-400">Five Sequential</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Three of a Kind</span> <span className="text-yellow-400">Three Same Rank</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Two Pair</span> <span className="text-yellow-400">Two Different Pairs</span></div>
-                            <div className="flex justify-between border-b border-gray-700 pb-2"><span>Pair</span> <span className="text-yellow-400">Two Same Rank</span></div>
-                            <div className="flex justify-between"><span>High Card</span> <span className="text-yellow-400">Highest Rank Card</span></div>
+                    <div className="bg-slate-900 p-6 rounded-2xl max-w-4xl w-full border border-white/10 overflow-y-auto max-h-[90vh] shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-3xl font-bold text-white">Hand Rankings</h2>
+                            <button onClick={() => setShowRankings(false)} className="text-gray-400 hover:text-white text-2xl">✕</button>
                         </div>
-                        <button className="mt-6 w-full bg-blue-600 py-3 rounded-xl font-bold text-white" onClick={() => setShowRankings(false)}>Close</button>
+
+                        <div className="space-y-4">
+                            {[
+                                { name: 'Royal Flush', desc: 'A-K-Q-J-10 (Same Suit)', cards: [{ rank: 'A', suit: 'h' }, { rank: 'K', suit: 'h' }, { rank: 'Q', suit: 'h' }, { rank: 'J', suit: 'h' }, { rank: '10', suit: 'h' }] },
+                                { name: 'Straight Flush', desc: 'Five Sequential (Same Suit)', cards: [{ rank: '9', suit: 's' }, { rank: '8', suit: 's' }, { rank: '7', suit: 's' }, { rank: '6', suit: 's' }, { rank: '5', suit: 's' }] },
+                                { name: 'Four of a Kind', desc: 'Four Same Rank', cards: [{ rank: '8', suit: 'h' }, { rank: '8', suit: 'd' }, { rank: '8', suit: 'c' }, { rank: '8', suit: 's' }, { rank: 'K', suit: 'd' }] },
+                                { name: 'Full House', desc: 'Three of a Kind + Pair', cards: [{ rank: '10', suit: 'h' }, { rank: '10', suit: 'd' }, { rank: '10', suit: 'c' }, { rank: '4', suit: 's' }, { rank: '4', suit: 'd' }] },
+                                { name: 'Flush', desc: 'Five Same Suit', cards: [{ rank: 'A', suit: 'c' }, { rank: 'J', suit: 'c' }, { rank: '8', suit: 'c' }, { rank: '4', suit: 'c' }, { rank: '2', suit: 'c' }] },
+                                { name: 'Straight', desc: 'Five Sequential', cards: [{ rank: '9', suit: 'c' }, { rank: '8', suit: 'd' }, { rank: '7', suit: 's' }, { rank: '6', suit: 'h' }, { rank: '5', suit: 'd' }] },
+                                { name: 'Three of a Kind', desc: 'Three Same Rank', cards: [{ rank: '7', suit: 'c' }, { rank: '7', suit: 's' }, { rank: '7', suit: 'd' }, { rank: 'K', suit: 'h' }, { rank: '2', suit: 's' }] },
+                                { name: 'Two Pair', desc: 'Two Different Pairs', cards: [{ rank: 'J', suit: 'h' }, { rank: 'J', suit: 'd' }, { rank: '4', suit: 'c' }, { rank: '4', suit: 's' }, { rank: 'A', suit: 'h' }] },
+                                { name: 'Pair', desc: 'Two Same Rank', cards: [{ rank: 'A', suit: 'h' }, { rank: 'A', suit: 'd' }, { rank: 'K', suit: 'c' }, { rank: 'J', suit: 's' }, { rank: '8', suit: 'h' }] },
+                                { name: 'High Card', desc: 'Highest Rank Card', cards: [{ rank: 'A', suit: 'h' }, { rank: 'J', suit: 'd' }, { rank: '8', suit: 's' }, { rank: '6', suit: 'c' }, { rank: '2', suit: 'h' }] },
+                            ].map((rank, i) => (
+                                <div key={i} className="flex flex-col md:flex-row items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                    <div className="md:w-1/3 text-center md:text-left">
+                                        <h3 className="text-xl font-bold text-yellow-400">{rank.name}</h3>
+                                        <p className="text-gray-400 text-sm">{rank.desc}</p>
+                                    </div>
+                                    <div className="flex gap-2 scale-75 md:scale-100 origin-center">
+                                        {rank.cards.map((card, ci) => (
+                                            <CardUI key={ci} card={card} />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button className="mt-8 w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-white text-lg shadow-lg transition-all" onClick={() => setShowRankings(false)}>Close Rankings</button>
                     </div>
                 </div>
             )}

@@ -177,13 +177,20 @@ export function setupSocketHandlers(io: Server) {
                 }
             }
 
+            // Create Session
+            const sessionId = await db.createTableSession(tableId, user.id, buyInAmount || 1000);
+
             const player: Player = {
                 id: socket.id,
                 address,
+                accountId: user.id, // Store account ID for stats
+                sessionId, // Store session ID
                 name: user.username, // Use account username
                 chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
+                totalBuyIn: buyInAmount || 1000, // Initialize total buy-in
                 bet: 0,
+                handContribution: 0, // Initialize hand contribution
                 folded: false,
                 cards: [],
                 seat: -1,
@@ -206,6 +213,8 @@ export function setupSocketHandlers(io: Server) {
                     console.log(`Deposit verified: ${verifiedAmount} chips`);
                     player.chips = verifiedAmount;
                     player.startHandChips = verifiedAmount;
+                    // Update session buy-in with verified amount
+                    // We could update the DB session record here if needed, but initial buy-in is fine for now
                 } else {
                     console.error(`Invalid deposit for ${name}`);
                     socket.emit("error", "Invalid deposit transaction");
@@ -309,9 +318,16 @@ export function setupSocketHandlers(io: Server) {
             const table = tables[tableId] || tables["default"];
             if (table) {
                 const player = table.players.find(p => p?.id === socket.id);
-                if (player && player.chips > 0 && player.address) {
-                    await processPayout(player.address, player.chips);
-                    player.chips = 0; // Reset chips after payout
+                if (player) {
+                    // Update Session
+                    if (player.sessionId) {
+                        await db.updateTableSession(player.sessionId, player.chips);
+                    }
+
+                    if (player.chips > 0 && player.address && table.config.isRealMoney) {
+                        await processPayout(player.address, player.chips);
+                        player.chips = 0; // Reset chips after payout
+                    }
                 }
                 table.removePlayer(socket.id);
 
@@ -330,8 +346,13 @@ export function setupSocketHandlers(io: Server) {
                 const player = table.players.find(p => p?.id === socket.id);
 
                 if (player) {
+                    // Update Session
+                    if (player.sessionId) {
+                        await db.updateTableSession(player.sessionId, player.chips);
+                    }
+
                     // Auto-payout on disconnect
-                    if (player.chips > 0 && player.address) {
+                    if (player.chips > 0 && player.address && table.config.isRealMoney) {
                         await processPayout(player.address, player.chips);
                     }
                     table.removePlayer(socket.id);

@@ -205,7 +205,8 @@ app.get("/api/account/stats", async (req, res) => {
             return;
         }
 
-        const stats = await db.getAccountStats(payload.id);
+        const mode = (req.query.mode as 'real' | 'play') || 'real';
+        const stats = await db.getAccountStats(payload.id, mode);
         res.json(stats);
     } catch (e) {
         console.error(e);
@@ -227,7 +228,8 @@ app.get("/api/account/history", async (req, res) => {
             return;
         }
 
-        const history = await db.getAccountHistory(payload.id);
+        const mode = (req.query.mode as 'real' | 'play') || 'real';
+        const history = await db.getAccountHistory(payload.id, mode);
         res.json(history);
     } catch (e) {
         console.error(e);

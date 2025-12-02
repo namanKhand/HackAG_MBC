@@ -11,12 +11,13 @@ export default function Dashboard() {
     const { user, token, refreshUser } = useAuth();
     const router = useRouter();
     const [linking, setLinking] = useState(false);
+    const [viewMode, setViewMode] = useState<'real' | 'play'>('real');
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['accountStats', user?.id],
+        queryKey: ['accountStats', user?.id, viewMode],
         queryFn: async () => {
             if (!token) return null;
-            const res = await fetch(`http://localhost:3001/api/account/stats`, {
+            const res = await fetch(`http://localhost:3001/api/account/stats?mode=${viewMode}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) return null;
@@ -26,10 +27,10 @@ export default function Dashboard() {
     });
 
     const { data: history, isLoading: historyLoading } = useQuery({
-        queryKey: ['accountHistory', user?.id],
+        queryKey: ['accountHistory', user?.id, viewMode],
         queryFn: async () => {
             if (!token) return [];
-            const res = await fetch(`http://localhost:3001/api/account/history`, {
+            const res = await fetch(`http://localhost:3001/api/account/history?mode=${viewMode}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) return [];
@@ -80,44 +81,60 @@ export default function Dashboard() {
                         <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
                         <p className="font-mono text-gray-400">Welcome, {user?.username}</p>
                     </div>
+                    <div className="flex bg-gray-800 p-1 rounded-xl border border-gray-700">
+                        <button
+                            onClick={() => setViewMode('real')}
+                            className={`px-6 py-2 rounded-lg font-bold transition-all ${viewMode === 'real' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Real Money
+                        </button>
+                        <button
+                            onClick={() => setViewMode('play')}
+                            className={`px-6 py-2 rounded-lg font-bold transition-all ${viewMode === 'play' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Play Money
+                        </button>
+                    </div>
                 </header>
 
-                {/* Wallet Linking Section */}
-                <div className="bg-gray-800/30 border border-gray-700 p-6 rounded-2xl mb-12 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-xl font-bold mb-2">Connected Wallets</h3>
-                        <div className="flex gap-2 flex-wrap">
-                            {user?.wallets && user.wallets.length > 0 ? (
-                                user.wallets.map(w => (
-                                    <span key={w} className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-mono border border-blue-800">
-                                        {w.slice(0, 6)}...{w.slice(-4)}
+                {/* Wallet Linking Section - Only show for Real Money */}
+                {viewMode === 'real' && (
+                    <div className="bg-gray-800/30 border border-gray-700 p-6 rounded-2xl mb-12 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold mb-2">Connected Wallets</h3>
+                            <div className="flex gap-2 flex-wrap">
+                                {user?.wallets && user.wallets.length > 0 ? (
+                                    user.wallets.map(w => (
+                                        <span key={w} className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-mono border border-blue-800">
+                                            {w.slice(0, 6)}...{w.slice(-4)}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500">No wallets linked yet.</p>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            {isConnected ? (
+                                !isWalletLinked ? (
+                                    <button
+                                        onClick={linkWallet}
+                                        disabled={linking}
+                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition disabled:opacity-50"
+                                    >
+                                        {linking ? 'Linking...' : 'Link Current Wallet'}
+                                    </button>
+                                ) : (
+                                    <span className="text-green-400 font-medium flex items-center">
+                                        ✓ Current Wallet Linked
                                     </span>
-                                ))
+                                )
                             ) : (
-                                <p className="text-gray-500">No wallets linked yet.</p>
+                                <p className="text-yellow-400 text-sm">Connect wallet to link it</p>
                             )}
                         </div>
                     </div>
-                    <div>
-                        {isConnected ? (
-                            !isWalletLinked ? (
-                                <button
-                                    onClick={linkWallet}
-                                    disabled={linking}
-                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition disabled:opacity-50"
-                                >
-                                    {linking ? 'Linking...' : 'Link Current Wallet'}
-                                </button>
-                            ) : (
-                                <span className="text-green-400 font-medium flex items-center">
-                                    ✓ Current Wallet Linked
-                                </span>
-                            )
-                        ) : (
-                            <p className="text-yellow-400 text-sm">Connect wallet to link it</p>
-                        )}
-                    </div>
-                </div>
+                )}
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -127,8 +144,8 @@ export default function Dashboard() {
                     </div>
                     <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
                         <h3 className="text-gray-400 text-sm mb-1">Total Winnings</h3>
-                        <p className="text-3xl font-bold text-green-400">
-                            {stats?.chips_won || 0} <span className="text-sm text-gray-500">Chips</span>
+                        <p className={`text-3xl font-bold ${viewMode === 'play' ? 'text-green-400' : 'text-blue-400'}`}>
+                            {stats?.chips_won || 0} <span className="text-sm text-gray-500">{viewMode === 'play' ? 'Chips' : 'USDC'}</span>
                         </p>
                     </div>
                     <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
@@ -147,7 +164,7 @@ export default function Dashboard() {
 
                 {/* Game History */}
                 <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8">
-                    <h2 className="text-2xl font-bold mb-6">Hand History</h2>
+                    <h2 className="text-2xl font-bold mb-6">{viewMode === 'real' ? 'Real Money History' : 'Play Money History'}</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
