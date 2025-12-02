@@ -214,12 +214,12 @@ export default function PokerTable({
         const relativeIndex = (seatIndex - mySeat + 6) % 6;
 
         const positions = [
-            'bottom-8 left-1/2 -translate-x-1/2', // Position 0 (Bottom - Me)
-            'bottom-32 left-12', // Position 1 (Bottom Left)
-            'top-32 left-12', // Position 2 (Top Left)
-            'top-8 left-1/2 -translate-x-1/2', // Position 3 (Top)
-            'top-32 right-12', // Position 4 (Top Right)
-            'bottom-32 right-12', // Position 5 (Bottom Right)
+            'bottom-[-40px] left-1/2 -translate-x-1/2', // Position 0 (Me - Bottom Center - Restored)
+            'bottom-24 left-8', // Position 1 (Bottom Left)
+            'top-24 left-8', // Position 2 (Top Left)
+            'top-[-40px] left-1/2 -translate-x-1/2', // Position 3 (Top Center)
+            'top-24 right-8', // Position 4 (Top Right)
+            'bottom-64 right-8', // Position 5 (Bottom Right - Moved up to avoid HUD)
         ];
         return positions[relativeIndex];
     };
@@ -267,10 +267,10 @@ export default function PokerTable({
                     </div>
 
                     {/* Table Area */}
-                    <div className="relative h-[700px] bg-gradient-to-b from-gray-900 to-black rounded-[100px] border-[20px] border-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center mx-auto overflow-hidden">
+                    <div className="relative h-[600px] bg-gradient-to-b from-gray-900 to-black rounded-[200px] border-[20px] border-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center mx-auto mb-32 mt-12 w-[90%]">
 
                         {/* Red Felt Gradient */}
-                        <div className="absolute inset-4 rounded-[80px] bg-gradient-to-br from-red-900/40 to-black border border-red-900/20 shadow-inner"></div>
+                        <div className="absolute inset-4 rounded-[180px] bg-gradient-to-br from-red-900/40 to-black border border-red-900/20 shadow-inner"></div>
 
                         {/* Center Logo (Base) */}
                         <div className="absolute opacity-20 pointer-events-none">
@@ -279,16 +279,8 @@ export default function PokerTable({
                             </div>
                         </div>
 
-                        {/* Corner Logos */}
-                        <div className="absolute top-8 left-8 opacity-30">
-                            <div className="w-12 h-12 rounded-full border-4 border-white"></div>
-                        </div>
-                        <div className="absolute top-8 right-8 opacity-30">
-                            <div className="w-12 h-12 rounded-full border-4 border-blue-500 bg-blue-500"></div>
-                        </div>
-
                         {/* Community Cards */}
-                        <div className="flex gap-3 z-10 p-6 bg-black/30 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl">
+                        <div className="flex gap-3 z-10 p-6 bg-black/30 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl transform -translate-y-8">
                             {table.communityCards.map((card, i) => (
                                 <CardUI key={i} card={card} />
                             ))}
@@ -298,8 +290,8 @@ export default function PokerTable({
                         </div>
 
                         {/* Pot Display */}
-                        <div className="absolute top-1/2 -translate-y-24 text-white/50 font-mono text-sm bg-black/40 px-4 py-1 rounded-full border border-white/5">
-                            Total Pot: ${table.pot}
+                        <div className="absolute top-1/2 translate-y-12 text-white/90 font-mono text-lg bg-black/60 px-6 py-2 rounded-full border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
+                            Pot: <span className="text-yellow-400 font-bold">${table.pot}</span>
                         </div>
 
                         {/* Players */}
@@ -308,11 +300,12 @@ export default function PokerTable({
 
                             const positionClass = getRotatedPosition(i);
                             const isDealer = i === table.dealerIndex;
+                            const isMe = player.id === socket?.id;
 
                             return (
-                                <div key={player.id} className={`absolute ${positionClass} flex flex-col items-center transition-all duration-500 ease-in-out`}>
+                                <div key={player.id} className={`absolute ${positionClass} flex flex-col items-center transition-all duration-500 ease-in-out z-30`}>
                                     {/* Avatar */}
-                                    <div className={`relative w-24 h-24 rounded-full flex items-center justify-center border-4 
+                                    <div className={`relative w-20 h-20 rounded-full flex items-center justify-center border-4 
                                         ${player.isTurn ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-110' :
                                             table.winners?.includes(player.id) ? 'border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.8)] scale-110 ring-4 ring-yellow-200 animate-pulse' :
                                                 'border-gray-700 bg-gray-900'} 
@@ -320,44 +313,48 @@ export default function PokerTable({
                                         transition-all duration-300 z-20 group`}>
 
                                         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-black opacity-90"></div>
-                                        <span className="relative text-sm text-center text-white font-bold px-2 truncate w-full z-10">{player.name}</span>
+                                        <span className="relative text-xs text-center text-white font-bold px-2 truncate w-full z-10">{player.name}</span>
 
                                         {/* Dealer Button */}
                                         {isDealer && (
-                                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-black font-bold text-sm border-2 border-gray-300 shadow-lg z-30">
+                                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-black font-bold text-xs border-2 border-gray-300 shadow-lg z-30">
                                                 D
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Chips & Bet */}
-                                    <div className="bg-black/80 px-4 py-1.5 rounded-full mt-3 text-sm text-white border border-white/10 backdrop-blur-md z-20 font-mono shadow-lg">
+                                    <div className="bg-black/80 px-3 py-1 rounded-full -mt-2 text-xs text-white border border-white/10 backdrop-blur-md z-30 font-mono shadow-lg relative">
                                         ${player.chips}
                                     </div>
+
                                     {player.bet > 0 && (
-                                        <div className="absolute -top-10 bg-yellow-600 px-3 py-1 rounded-lg text-sm text-white font-bold shadow-lg animate-bounce border border-yellow-400/50 z-50">
-                                            ${player.bet}
+                                        <div className="absolute top-24 bg-yellow-600 px-3 py-1 rounded-lg text-xs text-white font-bold shadow-lg border border-yellow-400/50 z-20 whitespace-nowrap">
+                                            Bet: ${player.bet}
                                         </div>
                                     )}
 
-                                    {/* Cards */}
-                                    <div className="flex gap-1 mt-3 -space-x-6 hover:space-x-1 transition-all duration-300">
-                                        {player.cards ? (
-                                            player.cards.map((card, ci) => (
-                                                <div key={ci} className="transform hover:-translate-y-3 transition-transform duration-300 shadow-xl">
-                                                    <CardUI card={card} />
-                                                </div>
-                                            ))
-                                        ) : (
-                                            // Masked Cards (Backs)
-                                            <>
-                                                <CardUI card={null} />
-                                                <CardUI card={null} />
-                                            </>
-                                        )}
-                                    </div>
-                                    {player.id === socket?.id && table.handDescription && (
-                                        <div className="mt-2 text-yellow-400 font-bold text-sm bg-black/60 px-2 py-1 rounded border border-yellow-400/30">
+                                    {/* Cards - Only show for others or if not me (my cards are shown separately at bottom) */}
+                                    {!isMe && (
+                                        <div className="flex gap-1 mt-2 -space-x-4 hover:space-x-1 transition-all duration-300 scale-75 origin-top">
+                                            {player.cards ? (
+                                                player.cards.map((card, ci) => (
+                                                    <div key={ci} className="shadow-xl">
+                                                        <CardUI card={card} />
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <>
+                                                    <CardUI card={null} />
+                                                    <CardUI card={null} />
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Hand Description Bubble */}
+                                    {isMe && table.handDescription && (
+                                        <div className="absolute -top-12 bg-black/80 text-yellow-400 text-xs px-3 py-1 rounded-full border border-yellow-400/30 whitespace-nowrap">
                                             {table.handDescription}
                                         </div>
                                     )}
@@ -366,69 +363,93 @@ export default function PokerTable({
                         })}
                     </div>
 
-                    {/* Controls */}
-                    {/* Controls */}
-                    {me && !me.folded && (
-                        <div className="fixed bottom-8 right-8 flex flex-col gap-4 items-end z-50">
-                            {myTurn ? (
-                                <div className="flex gap-4 bg-black/90 p-6 rounded-3xl backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-slide-up">
-                                    <button
-                                        onClick={() => handleAction('fold')}
-                                        className="bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                                    >
-                                        FOLD
-                                    </button>
+                    {/* My Cards & Controls Area - Fixed at Bottom Right */}
+                    {me && (
+                        <div className="fixed bottom-4 right-4 p-4 bg-black/80 rounded-2xl border border-white/10 backdrop-blur-xl z-50 flex items-end gap-6 shadow-2xl">
 
-                                    {canCheck ? (
-                                        <button
-                                            onClick={() => handleAction('check')}
-                                            className="bg-gradient-to-b from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                                        >
-                                            CHECK
-                                        </button>
+                            {/* My Cards */}
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="text-gray-400 text-xs font-bold tracking-wider uppercase">Your Hand</div>
+                                <div className="flex gap-2">
+                                    {me.cards ? (
+                                        me.cards.map((card, ci) => (
+                                            <div key={ci} className="shadow-lg transform hover:-translate-y-1 transition-transform">
+                                                <CardUI card={card} />
+                                            </div>
+                                        ))
                                     ) : (
-                                        <button
-                                            onClick={() => handleAction('call')}
-                                            className="bg-gradient-to-b from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                                        >
-                                            CALL ${callAmount}
-                                        </button>
+                                        <>
+                                            <div className="opacity-50"><CardUI card={null} /></div>
+                                            <div className="opacity-50"><CardUI card={null} /></div>
+                                        </>
                                     )}
+                                </div>
+                            </div>
 
-                                    {me.chips > table.currentBet && (
-                                        <div className="flex flex-col gap-2 items-center">
-                                            <input
-                                                type="range"
-                                                min={Math.min(table.currentBet + 20, me.chips)}
-                                                max={me.chips}
-                                                value={raiseAmount}
-                                                onChange={(e) => setRaiseAmount(Number(e.target.value))}
-                                                className="w-48 accent-green-500"
-                                            />
+                            {/* Controls */}
+                            {!me.folded && (
+                                <div className="flex gap-2 items-end">
+                                    {myTurn ? (
+                                        <div className="flex gap-2">
                                             <button
-                                                onClick={() => handleAction('raise', raiseAmount)}
-                                                className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                                                onClick={() => handleAction('fold')}
+                                                className="bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm"
                                             >
-                                                {raiseAmount === me.chips ? 'ALL IN' : `RAISE TO $${raiseAmount}`}
+                                                FOLD
+                                            </button>
+
+                                            {canCheck ? (
+                                                <button
+                                                    onClick={() => handleAction('check')}
+                                                    className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm"
+                                                >
+                                                    CHECK
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleAction('call')}
+                                                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm"
+                                                >
+                                                    CALL ${callAmount}
+                                                </button>
+                                            )}
+
+                                            {me.chips > table.currentBet && (
+                                                <div className="flex flex-col gap-1 items-center bg-black/40 p-1 rounded-xl border border-white/5">
+                                                    <input
+                                                        type="range"
+                                                        min={Math.min(table.currentBet + 20, me.chips)}
+                                                        max={me.chips}
+                                                        value={raiseAmount}
+                                                        onChange={(e) => setRaiseAmount(Number(e.target.value))}
+                                                        className="w-24 accent-green-500 h-1"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleAction('raise', raiseAmount)}
+                                                        className="bg-green-600 hover:bg-green-500 text-white px-2 py-2 rounded-lg font-bold transition-all shadow-lg active:scale-95 text-xs w-full whitespace-nowrap"
+                                                    >
+                                                        {raiseAmount === me.chips ? 'ALL IN' : `RAISE $${raiseAmount}`}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* Pre-Action Buttons */
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setPreAction(preAction === 'checkFold' ? 'none' : 'checkFold')}
+                                                className={`px-4 py-3 rounded-xl font-bold transition-all text-sm ${preAction === 'checkFold' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                                            >
+                                                Check/Fold
+                                            </button>
+                                            <button
+                                                onClick={() => setPreAction(preAction === 'callAny' ? 'none' : 'callAny')}
+                                                className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${preAction === 'callAny' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                                            >
+                                                Call Any
                                             </button>
                                         </div>
                                     )}
-                                </div>
-                            ) : (
-                                /* Pre-Action Buttons */
-                                <div className="flex gap-2 bg-black/60 p-2 rounded-xl backdrop-blur-md border border-white/5">
-                                    <button
-                                        onClick={() => setPreAction(preAction === 'checkFold' ? 'none' : 'checkFold')}
-                                        className={`px-4 py-2 rounded-lg font-bold transition-all ${preAction === 'checkFold' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                                    >
-                                        Check/Fold
-                                    </button>
-                                    <button
-                                        onClick={() => setPreAction(preAction === 'callAny' ? 'none' : 'callAny')}
-                                        className={`px-4 py-2 rounded-lg font-bold transition-all ${preAction === 'callAny' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                                    >
-                                        Call Any
-                                    </button>
                                 </div>
                             )}
                         </div>
