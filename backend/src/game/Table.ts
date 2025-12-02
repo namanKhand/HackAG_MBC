@@ -84,9 +84,14 @@ export class Table {
 
     startGame(): { success: boolean, error?: string } {
         const activePlayers = this.players.filter(p => p !== null && p.status === 'active' && p.chips > 0);
+        console.log(`[Table ${this.id}] Attempting to start game. Active players: ${activePlayers.length}`);
+        this.players.forEach((p, i) => {
+            if (p) console.log(`[Table ${this.id}] Seat ${i}: ${p.name} (${p.id}) - Status: ${p.status}, Chips: ${p.chips}`);
+        });
+
         if (activePlayers.length < 2) {
             this.gameActive = false;
-            return { success: false, error: "Not enough players (min 2)" };
+            return { success: false, error: `Not enough players (min 2). Active: ${activePlayers.length}` };
         }
 
         this.gameActive = true;

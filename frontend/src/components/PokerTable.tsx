@@ -91,6 +91,8 @@ export default function PokerTable({
     const [buyInAmount, setBuyInAmount] = useState(initialBuyIn || maxBuyIn);
     const [showRankings, setShowRankings] = useState(false);
 
+    const [preAction, setPreAction] = useState<'none' | 'checkFold' | 'callAny'>('none');
+
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
     const effectiveBuyIn = Math.min(Math.max(minBuyIn, buyInAmount), maxBuyIn);
@@ -123,6 +125,22 @@ export default function PokerTable({
             if (me?.isTurn) {
                 const minRaise = state.currentBet + 20; // Simplified min raise
                 setRaiseAmount(Math.min(minRaise, me.chips));
+
+                // Handle Pre-Actions
+                if (preAction === 'checkFold') {
+                    if (state.currentBet > me.bet) {
+                        newSocket.emit('player_action', { tableId, action: 'fold' });
+                    } else {
+                        newSocket.emit('player_action', { tableId, action: 'check' });
+                    }
+                    setPreAction('none');
+                } else if (preAction === 'callAny') {
+                    newSocket.emit('player_action', { tableId, action: 'call' });
+                    setPreAction('none');
+                }
+            } else {
+                // Reset pre-action if round changes or something invalidates it? 
+                // For now, keep it simple.
             }
         });
 
@@ -150,8 +168,12 @@ export default function PokerTable({
     };
 
     const startGame = () => {
+        console.log('Start Game button clicked');
         if (socket) {
+            console.log('Emitting start_game event for table:', tableId);
             socket.emit('start_game', { tableId });
+        } else {
+            console.error('Socket not connected');
         }
     };
 
@@ -193,11 +215,14 @@ export default function PokerTable({
                                 <p className="text-gray-400 text-sm border-l border-gray-600 pl-4">Stage: <span className="uppercase tracking-wider text-white">{table.stage}</span></p>
                             </div>
                         </div>
-                        {!table.gameActive && (
-                            <button onClick={startGame} className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-8 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(234,179,8,0.4)] transition-all transform hover:scale-105">
-                                Start Game
-                            </button>
-                        )}
+                        {(() => {
+                            console.log('Rendering Header. Game Active:', table.gameActive);
+                            return !table.gameActive && (
+                                <button onClick={startGame} className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-8 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(234,179,8,0.4)] transition-all transform hover:scale-105">
+                                    Start Game
+                                </button>
+                            );
+                        })()}
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setShowRankings(!showRankings)}
@@ -320,46 +345,67 @@ export default function PokerTable({
                     </div>
 
                     {/* Controls */}
-                    {myTurn && me && (
-                        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-4 bg-black/90 p-6 rounded-3xl backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-50 animate-slide-up">
-                            <button
-                                onClick={() => handleAction('fold')}
-                                className="bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                            >
-                                FOLD
-                            </button>
-
-                            {canCheck ? (
-                                <button
-                                    onClick={() => handleAction('check')}
-                                    className="bg-gradient-to-b from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                                >
-                                    CHECK
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => handleAction('call')}
-                                    className="bg-gradient-to-b from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
-                                >
-                                    CALL ${callAmount}
-                                </button>
-                            )}
-
-                            {me.chips > table.currentBet && (
-                                <div className="flex flex-col gap-2 items-center">
-                                    <input
-                                        type="range"
-                                        min={Math.min(table.currentBet + 20, me.chips)}
-                                        max={me.chips}
-                                        value={raiseAmount}
-                                        onChange={(e) => setRaiseAmount(Number(e.target.value))}
-                                        className="w-48 accent-green-500"
-                                    />
+                    {/* Controls */}
+                    {me && !me.folded && (
+                        <div className="fixed bottom-8 right-8 flex flex-col gap-4 items-end z-50">
+                            {myTurn ? (
+                                <div className="flex gap-4 bg-black/90 p-6 rounded-3xl backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-slide-up">
                                     <button
-                                        onClick={() => handleAction('raise', raiseAmount)}
-                                        className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                                        onClick={() => handleAction('fold')}
+                                        className="bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
                                     >
-                                        {raiseAmount === me.chips ? 'ALL IN' : `RAISE TO $${raiseAmount}`}
+                                        FOLD
+                                    </button>
+
+                                    {canCheck ? (
+                                        <button
+                                            onClick={() => handleAction('check')}
+                                            className="bg-gradient-to-b from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                                        >
+                                            CHECK
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleAction('call')}
+                                            className="bg-gradient-to-b from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                                        >
+                                            CALL ${callAmount}
+                                        </button>
+                                    )}
+
+                                    {me.chips > table.currentBet && (
+                                        <div className="flex flex-col gap-2 items-center">
+                                            <input
+                                                type="range"
+                                                min={Math.min(table.currentBet + 20, me.chips)}
+                                                max={me.chips}
+                                                value={raiseAmount}
+                                                onChange={(e) => setRaiseAmount(Number(e.target.value))}
+                                                className="w-48 accent-green-500"
+                                            />
+                                            <button
+                                                onClick={() => handleAction('raise', raiseAmount)}
+                                                className="bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 border-t border-white/20"
+                                            >
+                                                {raiseAmount === me.chips ? 'ALL IN' : `RAISE TO $${raiseAmount}`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* Pre-Action Buttons */
+                                <div className="flex gap-2 bg-black/60 p-2 rounded-xl backdrop-blur-md border border-white/5">
+                                    <button
+                                        onClick={() => setPreAction(preAction === 'checkFold' ? 'none' : 'checkFold')}
+                                        className={`px-4 py-2 rounded-lg font-bold transition-all ${preAction === 'checkFold' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                                    >
+                                        Check/Fold
+                                    </button>
+                                    <button
+                                        onClick={() => setPreAction(preAction === 'callAny' ? 'none' : 'callAny')}
+                                        className={`px-4 py-2 rounded-lg font-bold transition-all ${preAction === 'callAny' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                                    >
+                                        Call Any
                                     </button>
                                 </div>
                             )}

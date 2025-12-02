@@ -90,6 +90,16 @@ export function setupSocketHandlers(io: Server) {
     io.on("connection", (socket: Socket) => {
         console.log("Client connected:", socket.id);
 
+        socket.on("create_table", ({ tableId }: { tableId: string }) => {
+            if (!tables[tableId]) {
+                tables[tableId] = new Table(tableId);
+                console.log(`Created new table: ${tableId}`);
+                socket.emit("table_created", { tableId });
+            } else {
+                socket.emit("error", "Table already exists");
+            }
+        });
+
         socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string }) => {
             const table = tables[tableId] || tables["default"];
 
@@ -144,14 +154,13 @@ export function setupSocketHandlers(io: Server) {
         });
 
         socket.on("start_game", async ({ tableId }) => {
-            const table = tables[tableId];
+            console.log(`Received start_game request for table ${tableId} from ${socket.id}`);
+            const table = tables[tableId] || tables["default"];
             if (table) {
                 const result = table.startGame();
+                console.log(`Start game result:`, result);
                 if (result.success) {
-                    const sockets = await io.in(tableId).fetchSockets();
-                    for (const s of sockets) {
-                        s.emit("table_state", table.getForPlayer(s.id));
-                    }
+                    await broadcastAndCheck(tableId, table);
                 } else {
                     socket.emit("error", result.error || "Failed to start game");
                 }
@@ -188,7 +197,7 @@ export function setupSocketHandlers(io: Server) {
         };
 
         socket.on("player_action", async ({ tableId, action, amount }: { tableId: string, action: any, amount?: number }) => {
-            const table = tables[tableId];
+            const table = tables[tableId] || tables["default"];
             if (table) {
                 if (table.handleAction(socket.id, action, amount)) {
                     await broadcastAndCheck(tableId, table);
@@ -197,7 +206,7 @@ export function setupSocketHandlers(io: Server) {
         });
 
         socket.on("sit_out", async ({ tableId }) => {
-            const table = tables[tableId];
+            const table = tables[tableId] || tables["default"];
             if (table) {
                 table.setPlayerStatus(socket.id, 'sitting_out');
                 const sockets = await io.in(tableId).fetchSockets();
@@ -208,7 +217,7 @@ export function setupSocketHandlers(io: Server) {
         });
 
         socket.on("back_in", async ({ tableId }) => {
-            const table = tables[tableId];
+            const table = tables[tableId] || tables["default"];
             if (table) {
                 table.setPlayerStatus(socket.id, 'active');
                 const sockets = await io.in(tableId).fetchSockets();
@@ -219,7 +228,7 @@ export function setupSocketHandlers(io: Server) {
         });
 
         socket.on("leave_table", async ({ tableId }) => {
-            const table = tables[tableId];
+            const table = tables[tableId] || tables["default"];
             if (table) {
                 const player = table.players.find(p => p?.id === socket.id);
                 if (player && player.chips > 0 && player.address) {
