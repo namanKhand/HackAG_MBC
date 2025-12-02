@@ -106,15 +106,31 @@ export default function PokerTable({
             console.log('Connected to server');
             setSocket(newSocket);
 
+            const params = new URLSearchParams(window.location.search);
+            const action = params.get('action');
+
+            if (action === 'create') {
+                newSocket.emit('create_table', { tableId });
+            }
+
             // If initialBuyIn is provided, auto-join
+            // Wait for 'table_created' if we are creating? 
+            // Actually, 'create_table' is synchronous-ish on backend, but let's be safe.
+            // If we emit create, then join immediately, it might race?
+            // Backend handles create synchronously.
+
             if (initialBuyIn) {
-                newSocket.emit('join_table', {
-                    tableId,
-                    name: playerName,
-                    address,
-                    buyInAmount: initialBuyIn,
-                    txHash: initialTxHash
-                });
+                // Small delay to ensure create happens first if needed?
+                // Or just emit join.
+                setTimeout(() => {
+                    newSocket.emit('join_table', {
+                        tableId,
+                        name: playerName,
+                        address,
+                        buyInAmount: initialBuyIn,
+                        txHash: initialTxHash
+                    });
+                }, 100);
             }
         });
 
@@ -145,7 +161,12 @@ export default function PokerTable({
         });
 
         newSocket.on('error', (msg: string) => {
-            alert(msg);
+            if (msg === 'Table not found') {
+                alert('Table not found. Redirecting to Lobby...');
+                router.push('/lobby');
+            } else {
+                alert(msg);
+            }
         });
 
         return () => {

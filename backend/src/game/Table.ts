@@ -25,8 +25,18 @@ export interface Player {
     };
 }
 
+export interface TableConfig {
+    id: string;
+    name?: string;
+    smallBlind: number;
+    bigBlind: number;
+    isPublic: boolean;
+    hostId?: string;
+}
+
 export class Table {
     id: string;
+    config: TableConfig;
     players: (Player | null)[];
     deck: Deck;
     communityCards: Card[];
@@ -39,9 +49,24 @@ export class Table {
     smallBlind: number = 10;
     bigBlind: number = 20;
     winners: string[] = [];
+    ledger: Record<string, number> = {};
 
-    constructor(id: string) {
-        this.id = id;
+    constructor(configOrId: string | TableConfig) {
+        if (typeof configOrId === 'string') {
+            this.id = configOrId;
+            this.config = {
+                id: configOrId,
+                smallBlind: 10,
+                bigBlind: 20,
+                isPublic: true
+            };
+        } else {
+            this.id = configOrId.id;
+            this.config = configOrId;
+            this.smallBlind = configOrId.smallBlind;
+            this.bigBlind = configOrId.bigBlind;
+        }
+
         this.players = new Array(6).fill(null); // 6-max table
         this.deck = new Deck();
         this.communityCards = [];
@@ -52,6 +77,7 @@ export class Table {
         this.gameActive = false;
         this.stage = 'preflop';
         this.winners = [];
+        this.ledger = {};
     }
 
     addPlayer(player: Player): boolean {
@@ -403,5 +429,22 @@ export class Table {
         if (player) {
             player.status = status;
         }
+    }
+
+    addChips(playerId: string, amount: number) {
+        const player = this.players.find(p => p?.id === playerId);
+        if (player) {
+            player.chips += amount;
+            this.ledger[playerId] = (this.ledger[playerId] || 0) + amount;
+        }
+    }
+
+    transferHost(newHostId: string): boolean {
+        const player = this.players.find(p => p?.id === newHostId);
+        if (player) {
+            this.config.hostId = newHostId;
+            return true;
+        }
+        return false;
     }
 }

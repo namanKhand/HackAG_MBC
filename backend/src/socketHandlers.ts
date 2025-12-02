@@ -101,7 +101,12 @@ export function setupSocketHandlers(io: Server) {
         });
 
         socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string }) => {
-            const table = tables[tableId] || tables["default"];
+            const table = tables[tableId];
+
+            if (!table) {
+                socket.emit("error", "Table not found");
+                return;
+            }
 
             const player: Player = {
                 id: socket.id,

@@ -36,25 +36,7 @@ function LobbyContent() {
 
     const handleCreatePrivate = () => {
         const tableId = `private-${Math.random().toString(36).substr(2, 9)}`;
-        // In a real app, we'd emit 'create_table' here, but for now we can just navigate
-        // and let the backend create it on join if it doesn't exist (or we add explicit create logic)
-        // Since we added 'create_table' handler, let's use it or just rely on dynamic routing.
-        // For simplicity, let's just route to it. The Table component will try to join.
-        // Wait, if we use 'join_table' on a non-existent table, it might fail if we don't have auto-create.
-        // Our 'join_table' falls back to 'default' if not found, which is BAD for private tables.
-        // We need to explicitly create it.
-
-        // Actually, for this MVP, let's just route to the table page. 
-        // We need to update the Table page to emit 'create_table' if it's a private ID?
-        // Or better: The Lobby should emit 'create_table' then route.
-        // But we don't have a socket here in Lobby easily.
-        // Let's just route and assume the backend handles "join non-existent" by creating or erroring.
-        // Our current backend `join_table` uses `tables[tableId] || tables["default"]`.
-        // This means ANY random ID will join the DEFAULT table. This is a bug for private tables.
-        // We should fix `join_table` to NOT fallback if it's a specific ID?
-        // Or just route for now and let the user see the default table (temporary).
-
-        router.push(`/table/${tableId}?mode=${mode}`);
+        router.push(`/table/${tableId}?mode=${mode}&action=create`);
     };
 
     const handleJoinPrivate = () => {
