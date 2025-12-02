@@ -9,11 +9,57 @@ tables["default"] = new Table("default");
 
 const MIDDLEMAN_PRIVATE_KEY = process.env.MIDDLEMAN_WALLET_PRIVATE_KEY;
 const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
-const USDC_ADDRESS = process.env.USDC_ADDRESS;
+const MIDDLEMAN_VAULT_ADDRESS = process.env.MIDDLEMAN_VAULT_ADDRESS;
+
+// Vault ABI for event parsing
+const VAULT_ABI = [
+    "event Deposited(address indexed user, uint256 amount)",
+    "event PaidOut(address indexed recipient, uint256 amount)"
+];
+
+// Helper to verify deposit on-chain
+async function verifyDeposit(txHash: string, userAddress: string): Promise<number | null> {
+    if (!MIDDLEMAN_VAULT_ADDRESS) return null;
+
+    try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const receipt = await provider.getTransactionReceipt(txHash);
+
+        if (!receipt || receipt.status !== 1) {
+            console.log(`Tx ${txHash} failed or not found`);
+            return null;
+        }
+
+        const vaultInterface = new ethers.Interface(VAULT_ABI);
+
+        for (const log of receipt.logs) {
+            if (log.address.toLowerCase() === MIDDLEMAN_VAULT_ADDRESS.toLowerCase()) {
+                try {
+                    const parsed = vaultInterface.parseLog(log);
+                    if (parsed && parsed.name === 'Deposited') {
+                        const depositor = parsed.args[0];
+                        const amount = parsed.args[1];
+
+                        if (depositor.toLowerCase() === userAddress.toLowerCase()) {
+                            // Return amount in chips (assuming 6 decimals for USDC)
+                            return Number(ethers.formatUnits(amount, 6));
+                        }
+                    }
+                } catch (e) {
+                    // Ignore logs that don't match ABI
+                }
+            }
+        }
+        return null;
+    } catch (err) {
+        console.error("Error verifying deposit:", err);
+        return null;
+    }
+}
 
 // Helper to process payout
 async function processPayout(address: string, amount: number) {
-    if (!MIDDLEMAN_PRIVATE_KEY || !USDC_ADDRESS) {
+    if (!MIDDLEMAN_PRIVATE_KEY || !MIDDLEMAN_VAULT_ADDRESS) {
         console.error("Missing env vars for payout");
         return;
     }
@@ -21,16 +67,17 @@ async function processPayout(address: string, amount: number) {
     try {
         const provider = new ethers.JsonRpcProvider(RPC_URL);
         const wallet = new ethers.Wallet(MIDDLEMAN_PRIVATE_KEY, provider);
-        const usdc = new ethers.Contract(USDC_ADDRESS, [
-            "function transfer(address to, uint256 amount) returns (bool)"
+
+        const vault = new ethers.Contract(MIDDLEMAN_VAULT_ADDRESS, [
+            "function payout(address recipient, uint256 amount)"
         ], wallet);
 
         // Amount is in chips (assumed 1 chip = 1 USDC for now, or scaled)
         // If chips are 1:1 with USDC (6 decimals)
         const payoutAmount = ethers.parseUnits(amount.toString(), 6);
 
-        console.log(`Processing payout of ${amount} USDC to ${address}...`);
-        const tx = await usdc.transfer(address, payoutAmount);
+        console.log(`Processing payout of ${amount} USDC to ${address} via Vault...`);
+        const tx = await vault.payout(address, payoutAmount);
         console.log(`Payout sent! Tx: ${tx.hash}`);
         await tx.wait();
         console.log(`Payout confirmed: ${tx.hash}`);
@@ -43,7 +90,7 @@ export function setupSocketHandlers(io: Server) {
     io.on("connection", (socket: Socket) => {
         console.log("Client connected:", socket.id);
 
-        socket.on("join_table", async ({ tableId, name, address, buyInAmount }: { tableId: string; name: string; address?: string; buyInAmount?: number }) => {
+        socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string }) => {
             const table = tables[tableId] || tables["default"];
 
             const player: Player = {
@@ -66,6 +113,21 @@ export function setupSocketHandlers(io: Server) {
                     threeBetOpp: false
                 }
             };
+
+            // Verify deposit if txHash is provided (Real Money Mode)
+            if (txHash && address) {
+                console.log(`Verifying deposit for ${name}...`);
+                const verifiedAmount = await verifyDeposit(txHash, address);
+                if (verifiedAmount) {
+                    console.log(`Deposit verified: ${verifiedAmount} chips`);
+                    player.chips = verifiedAmount;
+                    player.startHandChips = verifiedAmount;
+                } else {
+                    console.error(`Invalid deposit for ${name}`);
+                    socket.emit("error", "Invalid deposit transaction");
+                    return;
+                }
+            }
 
             if (table.addPlayer(player)) {
                 socket.join(tableId);

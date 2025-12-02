@@ -839,6 +839,46 @@
       "artifacts": [
         "IERC721Receiver"
       ]
+    },
+    "/Users/taranveersingh/HackAG_MBC/contracts/contracts/MiddlemanVault.sol": {
+      "lastModificationDate": 1764649527600,
+      "contentHash": "b3ee063589a25885a5eddbe8e672dbfb",
+      "sourceName": "contracts/MiddlemanVault.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "MiddlemanVault"
+      ]
     }
   }
 }

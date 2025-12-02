@@ -6,12 +6,7 @@ import { useAccount } from 'wagmi';
 import { useSearchParams } from 'next/navigation';
 import BuyInModal from '@/components/BuyInModal';
 
-const TABLES = [
-    { id: 'micro', name: 'Micro Stakes', stakes: '0.1/0.2 USDC', minBuyIn: 20, maxBuyIn: 50 },
-    { id: 'low', name: 'Low Stakes', stakes: '1/2 USDC', minBuyIn: 100, maxBuyIn: 200 },
-    { id: 'mid', name: 'Mid Stakes', stakes: '5/10 USDC', minBuyIn: 500, maxBuyIn: 1000 },
-    { id: 'high', name: 'High Stakes', stakes: '50/100 USDC', minBuyIn: 5000, maxBuyIn: 10000 },
-];
+import { TABLES } from '@/constants';
 
 export default function Lobby() {
     const router = useRouter();

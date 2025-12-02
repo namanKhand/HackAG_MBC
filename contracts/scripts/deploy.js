@@ -28,6 +28,14 @@ async function main() {
     // Transfer ownership of ReputationNFT to Manager
     await reputationNFT.transferOwnership(managerAddress);
     console.log("ReputationNFT ownership transferred to PokerGameManager");
+
+    // Deploy MiddlemanVault
+    // For local dev, we use the deployer as the backend wallet
+    const MiddlemanVault = await hre.ethers.getContractFactory("MiddlemanVault");
+    const middlemanVault = await MiddlemanVault.deploy(usdcAddress, deployer.address);
+    await middlemanVault.waitForDeployment();
+    const vaultAddress = await middlemanVault.getAddress();
+    console.log("MiddlemanVault deployed to:", vaultAddress);
 }
 
 main().catch((error) => {

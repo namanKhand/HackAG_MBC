@@ -58,7 +58,23 @@ const CardUI = ({ card }: { card: Card | null }) => {
     );
 };
 
-export default function PokerTable({ tableId, playerName, mode }: { tableId: string; playerName: string; mode: string }) {
+export default function PokerTable({
+    tableId,
+    playerName,
+    mode,
+    minBuyIn = 100,
+    maxBuyIn = 1000,
+    initialBuyIn,
+    initialTxHash
+}: {
+    tableId: string;
+    playerName: string;
+    mode: string;
+    minBuyIn?: number;
+    maxBuyIn?: number;
+    initialBuyIn?: number;
+    initialTxHash?: string;
+}) {
     const { address } = useAccount();
     const { data: balanceData } = useBalance({
         address: address,
@@ -69,15 +85,13 @@ export default function PokerTable({ tableId, playerName, mode }: { tableId: str
     const [socket, setSocket] = useState<Socket | null>(null);
     const [table, setTable] = useState<TableState | null>(null);
     const [raiseAmount, setRaiseAmount] = useState<number>(0);
-    const [showBuyInModal, setShowBuyInModal] = useState(true);
-    const [buyInAmount, setBuyInAmount] = useState(1000);
+    const [showBuyInModal, setShowBuyInModal] = useState(!initialBuyIn);
+    const [buyInAmount, setBuyInAmount] = useState(initialBuyIn || maxBuyIn);
     const [showRankings, setShowRankings] = useState(false);
 
-    const maxBuyIn = 1000; // Game max limit
-
     // Derive effective buy-in to avoid useEffect state updates
-    // Allow slider to go up to 1000 regardless of wallet balance
-    const effectiveBuyIn = Math.min(Math.max(100, buyInAmount), maxBuyIn);
+    // Allow slider to go up to maxBuyIn regardless of wallet balance
+    const effectiveBuyIn = Math.min(Math.max(minBuyIn, buyInAmount), maxBuyIn);
 
     const canBuyIn = mode === 'paper' || (walletBalance >= effectiveBuyIn); // Check if wallet has enough for SELECTED amount
 
@@ -87,7 +101,17 @@ export default function PokerTable({ tableId, playerName, mode }: { tableId: str
         newSocket.on('connect', () => {
             console.log('Connected to server');
             setSocket(newSocket);
-            // newSocket.emit('join_table', { tableId, name: playerName, address }); // Removed auto-join
+
+            // If initialBuyIn is provided, auto-join
+            if (initialBuyIn) {
+                newSocket.emit('join_table', {
+                    tableId,
+                    name: playerName,
+                    address,
+                    buyInAmount: initialBuyIn,
+                    txHash: initialTxHash
+                });
+            }
         });
 
         newSocket.on('table_state', (state: TableState) => {
@@ -113,6 +137,17 @@ export default function PokerTable({ tableId, playerName, mode }: { tableId: str
 
     const handleJoinTable = () => {
         if (socket) {
+            // Note: If joining manually via modal, we don't have a txHash yet unless we integrate BuyInModal here too.
+            // For now, manual join assumes Paper mode or future integration.
+            // But wait, the modal IS here. We need to capture txHash from modal success?
+            // Actually, for Real Money, user MUST go through Lobby -> Modal -> Redirect.
+            // So this manual join button is mostly for Paper or Re-buy (which needs modal).
+
+            // If we are in Real mode and using the slider here, we need to trigger the BuyInModal flow?
+            // The current UI shows a slider and "JOIN TABLE".
+            // If Real mode, this should probably trigger the on-chain tx first.
+
+            // For now, let's just emit. If backend requires txHash for Real mode, this will fail/error, which is correct.
             socket.emit('join_table', { tableId, name: playerName, address, buyInAmount: effectiveBuyIn });
             setShowBuyInModal(false);
         }
@@ -373,7 +408,7 @@ export default function PokerTable({ tableId, playerName, mode }: { tableId: str
                             <div className="text-5xl font-bold text-green-400 mb-4 font-mono">${effectiveBuyIn}</div>
                             <input
                                 type="range"
-                                min="100"
+                                min={minBuyIn}
                                 max={maxBuyIn}
                                 step="50"
                                 value={effectiveBuyIn}
@@ -381,14 +416,14 @@ export default function PokerTable({ tableId, playerName, mode }: { tableId: str
                                 className="w-full accent-green-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                             />
                             <div className="flex justify-between text-gray-500 text-sm mt-2 font-mono">
-                                <span>$100</span>
+                                <span>${minBuyIn}</span>
                                 <span>${maxBuyIn}</span>
                             </div>
                         </div>
 
                         {!canBuyIn ? (
                             <div className="text-red-500 font-bold mb-4">
-                                {walletBalance < 100 ? "Insufficient funds. Minimum buy-in is $100." : "Insufficient funds for selected buy-in."}
+                                {walletBalance < minBuyIn ? `Insufficient funds. Minimum buy-in is $${minBuyIn}.` : "Insufficient funds for selected buy-in."}
                             </div>
                         ) : (
                             <button

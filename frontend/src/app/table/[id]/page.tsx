@@ -1,6 +1,7 @@
 'use client';
 
 import PokerTable from '@/components/PokerTable';
+import { TABLES } from '@/constants';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
@@ -13,6 +14,13 @@ export default function TablePage() {
 
     const mode = searchParams.get('mode');
     const nameParam = searchParams.get('name');
+    const buyInParam = searchParams.get('buyIn');
+    const txHashParam = searchParams.get('tx');
+
+    const tableConfig = TABLES.find(t => t.id === tableId);
+    const minBuyIn = tableConfig ? tableConfig.minBuyIn : 100;
+    const maxBuyIn = tableConfig ? tableConfig.maxBuyIn : 1000;
+    const initialBuyIn = buyInParam ? Number(buyInParam) : undefined;
 
     const playerName = (mode === 'real' && address)
         ? `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -36,7 +44,15 @@ export default function TablePage() {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-slate-900 text-white">
-            <PokerTable tableId={tableId} playerName={playerName} mode={mode || 'real'} />
+            <PokerTable
+                tableId={tableId}
+                playerName={playerName}
+                mode={mode || 'real'}
+                minBuyIn={minBuyIn}
+                maxBuyIn={maxBuyIn}
+                initialBuyIn={initialBuyIn}
+                initialTxHash={txHashParam || undefined}
+            />
         </main>
     );
 }
