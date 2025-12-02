@@ -96,7 +96,7 @@ export default function PokerTable({
     const canBuyIn = mode === 'paper' || (walletBalance >= effectiveBuyIn); // Check if wallet has enough for SELECTED amount
 
     useEffect(() => {
-        const newSocket = io('http://localhost:3001');
+        const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001');
 
         newSocket.on('connect', () => {
             console.log('Connected to server');
@@ -127,7 +127,7 @@ export default function PokerTable({
         return () => {
             newSocket.disconnect();
         };
-    }, [tableId, playerName, address]);
+    }, [tableId, playerName, address, initialBuyIn, initialTxHash]);
 
     const handleAction = (action: string, amount?: number) => {
         if (socket) {

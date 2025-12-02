@@ -8,9 +8,9 @@ module.exports = {
         hardhat: {
             chainId: 31337,
         },
-        // baseSepolia: {
-        //   url: process.env.BASE_SEPOLIA_RPC_URL || "",
-        //   accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-        // },
+        baseSepolia: {
+            url: process.env.BASE_SEPOLIA_RPC_URL || "",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+        },
     },
 };
