@@ -465,7 +465,7 @@ export default function PokerTable({
                         <button
                             onClick={() => {
                                 setShowBuyInModal(false);
-                                router.push('/lobby');
+                                router.push(`/lobby?mode=${mode}`);
                             }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
                         >
@@ -478,7 +478,18 @@ export default function PokerTable({
                         )}
 
                         <div className="mb-8">
-                            <div className="text-5xl font-bold text-green-400 mb-4 font-mono">${effectiveBuyIn}</div>
+                            <div className="flex items-center justify-center gap-2 mb-4">
+                                <span className="text-2xl font-bold text-green-400 font-mono">$</span>
+                                <input
+                                    type="number"
+                                    min={minBuyIn}
+                                    max={maxBuyIn}
+                                    value={buyInAmount}
+                                    onChange={(e) => setBuyInAmount(Number(e.target.value))}
+                                    className="bg-transparent text-5xl font-bold text-green-400 font-mono w-48 text-center focus:outline-none border-b-2 border-green-500/30 focus:border-green-500 transition-colors"
+                                />
+                            </div>
+
                             <input
                                 type="range"
                                 min={minBuyIn}

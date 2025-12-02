@@ -4,6 +4,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAccount, useBalance } from 'wagmi';
+import { USDC_ADDRESS } from '../constants';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -14,6 +16,11 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
+    const { address } = useAccount();
+    const { data: usdcBalance } = useBalance({
+        address,
+        token: USDC_ADDRESS as `0x${string}`,
+    });
 
     const navItems = [
         { name: 'Home', path: '/', icon: Home },
@@ -94,11 +101,109 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             {/* Wallet Connection & Logout */}
             <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-4">
                 <div className={`transition-all duration-300 ${isCollapsed ? 'scale-75 origin-center -ml-1' : ''}`}>
-                    <ConnectButton
-                        showBalance={!isCollapsed}
-                        accountStatus={isCollapsed ? "avatar" : "full"}
-                        chainStatus={isCollapsed ? "none" : "full"}
-                    />
+                    <ConnectButton.Custom>
+                        {({
+                            account,
+                            chain,
+                            openAccountModal,
+                            openChainModal,
+                            openConnectModal,
+                            authenticationStatus,
+                            mounted,
+                        }) => {
+                            const ready = mounted && authenticationStatus !== 'loading';
+                            const connected =
+                                ready &&
+                                account &&
+                                chain &&
+                                (!authenticationStatus ||
+                                    authenticationStatus === 'authenticated');
+
+                            return (
+                                <div
+                                    {...(!ready && {
+                                        'aria-hidden': true,
+                                        'style': {
+                                            opacity: 0,
+                                            pointerEvents: 'none',
+                                            userSelect: 'none',
+                                        },
+                                    })}
+                                >
+                                    {(() => {
+                                        if (!connected) {
+                                            return (
+                                                <button
+                                                    onClick={openConnectModal}
+                                                    type="button"
+                                                    className={`bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl transition-colors w-full ${isCollapsed ? 'text-xs px-1' : ''}`}
+                                                >
+                                                    {isCollapsed ? 'Conn' : 'Connect Wallet'}
+                                                </button>
+                                            );
+                                        }
+
+                                        if (chain.unsupported) {
+                                            return (
+                                                <button
+                                                    onClick={openChainModal}
+                                                    type="button"
+                                                    className="bg-red-500 hover:bg-red-400 text-white font-bold py-2 px-4 rounded-xl transition-colors w-full"
+                                                >
+                                                    Wrong network
+                                                </button>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className={`flex items-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}>
+                                                {!isCollapsed && (
+                                                    <button
+                                                        onClick={openChainModal}
+                                                        className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-xl transition-colors"
+                                                    >
+                                                        {chain.hasIcon && (
+                                                            <div
+                                                                style={{
+                                                                    background: chain.iconBackground,
+                                                                    width: 12,
+                                                                    height: 12,
+                                                                    borderRadius: 999,
+                                                                    overflow: 'hidden',
+                                                                }}
+                                                            >
+                                                                {chain.iconUrl && (
+                                                                    <img
+                                                                        alt={chain.name ?? 'Chain icon'}
+                                                                        src={chain.iconUrl}
+                                                                        style={{ width: 12, height: 12 }}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    onClick={openAccountModal}
+                                                    className={`bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-xl transition-colors flex items-center gap-2 ${isCollapsed ? 'w-full justify-center' : 'flex-1'}`}
+                                                >
+                                                    {!isCollapsed && (
+                                                        <span className="text-sm font-mono text-gray-300">
+                                                            {usdcBalance ? `${Number(usdcBalance.formatted).toFixed(2)} USDC` : account.displayBalance}
+                                                        </span>
+                                                    )}
+                                                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-xs font-bold">
+                                                        {account.displayName ? account.displayName[0] : 'U'}
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            );
+                        }}
+                    </ConnectButton.Custom>
                 </div>
 
                 <button
