@@ -3,18 +3,21 @@
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode, useState } from 'react';
 
 const config = getDefaultConfig({
     appName: 'Base Poker',
     projectId: 'YOUR_PROJECT_ID',
-    chains: [baseSepolia],
+    chains: [base],
     ssr: true,
 });
 
+console.log("Providers file evaluated");
+
 export function Providers({ children }: { children: ReactNode }) {
+    console.log("Providers component rendering");
     const [queryClient] = useState(() => new QueryClient());
 
     return (

@@ -1,21 +1,47 @@
-   ▲ Next.js 16.0.6 (Turbopack)
-   - Local:         http://localhost:3000
-   - Network:       http://192.168.1.6:3000
+   ▲ Next.js 15.0.3
+   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 724ms
- ⨯ ERROR: This build is using Turbopack, with a `webpack` config and no `turbopack` config.
-   This may be a mistake.
-
-   As of Next.js 16 Turbopack is enabled by default and
-   custom webpack configurations may need to be migrated to Turbopack.
-
-   NOTE: your `webpack` config may have been added by a configuration plugin.
-
-   To configure Turbopack, see https://nextjs.org/docs/app/api-reference/next-config-js/turbopack
-
-   TIP: Many applications work fine under Turbopack with no configuration,
-   if that is the case for you, you can silence this error by passing the
-   `--turbopack` or `--webpack` flag explicitly or simply setting an 
-   empty turbopack config in your Next config file (e.g. `turbopack: {}`).
-[?25h
+ ✓ Ready in 1463ms
+ ○ Compiling /lobby ...
+ ✓ Compiled /lobby in 5.2s (10265 modules)
+ GET /lobby?mode=real 200 in 5442ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 3.7s (5421 modules)
+ GET /favicon.ico 200 in 4110ms
+ HEAD /lobby 200 in 3598ms
+ GET /favicon.ico 200 in 4ms
+ GET /lobby?mode=real 200 in 25ms
+ GET /favicon.ico 200 in 7ms
+ GET /favicon.ico 200 in 23ms
+ HEAD /lobby 200 in 20ms
+ GET /favicon.ico 200 in 14ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 972ms (10272 modules)
+ GET /dashboard 200 in 1049ms
+ ○ Compiling / ...
+ ✓ Compiled / in 711ms (10279 modules)
+ GET / 200 in 758ms
+ GET /lobby?mode=paper 200 in 37ms
+ ○ Compiling /table/[id] ...
+ ✓ Compiled /table/[id] in 2.7s (10339 modules)
+ GET /table/micro?mode=paper 200 in 3733ms
+ GET /table/micro?mode=paper 200 in 14ms
+ GET /table/micro?mode=paper 200 in 29ms
+ GET /table/micro?mode=paper 200 in 239ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 514ms (5466 modules)
+ GET /favicon.ico 200 in 590ms
+ HEAD /table/micro 200 in 126ms
+ GET / 200 in 17ms
+ GET /lobby?mode=real 200 in 21ms
+ ✓ Compiled in 3.3s (10353 modules)
+ GET /lobby?mode=real 200 in 150ms
+ GET /lobby?mode=real 200 in 146ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 667ms (5466 modules)
+ GET /favicon.ico 200 in 744ms
+ GET /favicon.ico 200 in 172ms
+ HEAD /lobby 200 in 299ms
+ GET /table/micro?mode=real&buyIn=0.1&tx=0x7b9e2601fa3e3925fa1bbf07ea2e01576b558e73226cf087aae4c65c8c85202c 200 in 52ms
+ GET /table/micro?mode=real&buyIn=0.1&tx=0x7b9e2601fa3e3925fa1bbf07ea2e01576b558e73226cf087aae4c65c8c85202c 200 in 9ms

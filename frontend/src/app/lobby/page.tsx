@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
 import { useSearchParams } from 'next/navigation';
@@ -8,9 +8,9 @@ import BuyInModal from '@/components/BuyInModal';
 
 import { TABLES } from '@/constants';
 
-export default function Lobby() {
+function LobbyContent() {
     const router = useRouter();
-    const { isConnected } = useAccount();
+    const { isConnected, address } = useAccount();
     const searchParams = useSearchParams();
     const mode = searchParams.get('mode') || 'real';
 
@@ -150,6 +150,7 @@ export default function Lobby() {
                     onSuccess={handleBuyInSuccess}
                     minBuyIn={selectedTable.minBuyIn}
                     maxBuyIn={selectedTable.maxBuyIn}
+                    userAddress={address}
                 />
             )}
 
@@ -183,5 +184,13 @@ export default function Lobby() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function Lobby() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading Lobby...</div>}>
+            <LobbyContent />
+        </Suspense>
     );
 }

@@ -66,13 +66,16 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
     const { writeContract: writeDeposit, data: depositHash, isPending: isDepositPending } = useWriteContract();
     const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
 
-    // Check allowance
+    // Check allowance with polling
     const { data: allowance, refetch: refetchAllowance } = useReadContract({
         address: USDC_ADDRESS as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'allowance',
         args: [userAddress || '0x0', MIDDLEMAN_VAULT_ADDRESS as `0x${string}`],
-        query: { enabled: !!userAddress }
+        query: {
+            enabled: !!userAddress,
+            refetchInterval: 1000 // Poll every second
+        }
     });
 
     // Fetch USDC Balance
@@ -83,7 +86,19 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
     });
 
     useEffect(() => {
+        console.log('BuyInModal Debug:', {
+            userAddress,
+            USDC_ADDRESS,
+            balance: balance?.formatted,
+            allowance: allowance?.toString(),
+            step,
+            isApproveSuccess
+        });
+    }, [userAddress, balance, allowance, step, isApproveSuccess]);
+
+    useEffect(() => {
         if (isApproveSuccess && step !== 'depositing') {
+            console.log("Approve success, refetching allowance...");
             refetchAllowance();
             // eslint-disable-next-line react-hooks/exhaustive-deps
             setStep('depositing');
@@ -126,7 +141,8 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
         }
 
         const needed = parseUnits(amount, 6);
-        if (allowance && allowance >= needed) {
+        // If we are in 'depositing' step OR allowance is sufficient, try to deposit
+        if (step === 'depositing' || (allowance && allowance >= needed)) {
             handleDeposit();
         } else {
             handleApprove();
@@ -134,9 +150,18 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
     };
 
     const isPending = isApprovePending || isDepositPending || isApproveConfirming || isDepositConfirming;
-    const buttonText = isApprovePending || isApproveConfirming ? 'Approving...' :
-        isDepositPending || isDepositConfirming ? 'Depositing...' :
-            (allowance && allowance >= parseUnits(amount, 6)) ? 'Deposit & Join' : 'Approve & Deposit';
+
+    // Determine button text
+    let buttonText = 'Approve & Deposit';
+    const needed = parseUnits(amount, 6);
+
+    if (isApprovePending || isApproveConfirming) {
+        buttonText = 'Approving...';
+    } else if (isDepositPending || isDepositConfirming) {
+        buttonText = 'Depositing...';
+    } else if (step === 'depositing' || (allowance && allowance >= needed)) {
+        buttonText = 'Deposit & Join';
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
