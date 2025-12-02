@@ -137,17 +137,7 @@ export default function PokerTable({
 
     const handleJoinTable = () => {
         if (socket) {
-            // Note: If joining manually via modal, we don't have a txHash yet unless we integrate BuyInModal here too.
             // For now, manual join assumes Paper mode or future integration.
-            // But wait, the modal IS here. We need to capture txHash from modal success?
-            // Actually, for Real Money, user MUST go through Lobby -> Modal -> Redirect.
-            // So this manual join button is mostly for Paper or Re-buy (which needs modal).
-
-            // If we are in Real mode and using the slider here, we need to trigger the BuyInModal flow?
-            // The current UI shows a slider and "JOIN TABLE".
-            // If Real mode, this should probably trigger the on-chain tx first.
-
-            // For now, let's just emit. If backend requires txHash for Real mode, this will fail/error, which is correct.
             socket.emit('join_table', { tableId, name: playerName, address, buyInAmount: effectiveBuyIn });
             setShowBuyInModal(false);
         }

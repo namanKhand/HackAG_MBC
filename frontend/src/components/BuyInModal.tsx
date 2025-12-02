@@ -86,8 +86,6 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
         if (isApproveSuccess) {
             refetchAllowance();
             setStep('depositing');
-            // Auto-trigger deposit after approve? Or let user click. Let's let user click for safety/clarity or auto if UX is key.
-            // For now, let's just move to 'depositing' state and user clicks "Deposit"
         }
     }, [isApproveSuccess, refetchAllowance]);
 
