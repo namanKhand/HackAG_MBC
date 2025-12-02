@@ -8,6 +8,7 @@ export interface Player {
     address?: string; // Wallet address
     name: string;
     chips: number;
+    startHandChips: number; // Snapshot of chips at start of hand
     bet: number;
     folded: boolean;
     cards: Card[];
@@ -104,6 +105,7 @@ export class Table {
         // Deal cards
         this.players.forEach(p => {
             if (p && p.status === 'active' && p.chips > 0) {
+                p.startHandChips = p.chips; // Snapshot chips
                 p.cards = [this.deck.deal()!, this.deck.deal()!];
                 p.folded = false;
                 p.bet = 0;
@@ -313,27 +315,57 @@ export class Table {
                     hands_won: 1,
                     chips_won: share
                 });
-
-                db.addGameHistory({
-                    table_id: this.id,
-                    winner_address: w.player.address,
-                    pot_size: this.pot,
-                    hand_description: w.name // Hand name e.g. "Two Pair"
-                });
             }
         });
 
-        // Persist Player Stats (PFR, etc)
+        // Persist Player Stats (PFR, VPIP, 3-Bet) & Game History
         activePlayers.forEach(p => {
             if (p && p.address) {
                 db.updateUserStats(p.address, {
                     pfr_count: p.stats.pfr ? 1 : 0,
-                    pfr_opportunity: 1, // Every hand is PFR opp for now
+                    pfr_opportunity: 1,
+                    vpip_count: p.stats.vpip ? 1 : 0,
+                    vpip_opportunity: 1,
                     three_bet_count: p.stats.threeBet ? 1 : 0,
                     three_bet_opportunity: p.stats.threeBetOpp ? 1 : 0
                 });
             }
         });
+
+        // Persist Game History for ALL active players (winners and losers)
+        // We need the game_id from the main game_history entry.
+        // Since we don't have it easily here without refactoring addGameHistory to return ID,
+        // let's do it properly.
+
+        // 1. Create Game History Entry
+        const winner = this.players.find(p => p?.id === this.winners[0]);
+        if (winner && winner.address) {
+            db.addGameHistory({
+                table_id: this.id,
+                winner_address: winner.address,
+                pot_size: this.pot,
+                hand_description: this.getForPlayer(winner.id).handDescription || "Winner"
+            }).then(gameId => {
+                // 2. Create Player Game History Entries
+                this.players.forEach(p => {
+                    if (p && p.address && !p.status.includes('sitting_out')) {
+                        const netProfit = p.chips - p.startHandChips;
+                        let handDesc = "Folded";
+                        if (!p.folded) {
+                            const state = this.getForPlayer(p.id);
+                            handDesc = state.handDescription || "High Card";
+                        }
+
+                        db.addPlayerGameHistory({
+                            game_id: gameId,
+                            address: p.address,
+                            net_profit: netProfit,
+                            hand_description: handDesc
+                        });
+                    }
+                });
+            });
+        }
 
         this.gameActive = false;
     }

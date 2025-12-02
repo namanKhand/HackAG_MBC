@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Header from "../components/Header";
 import "./globals.css";
 import { ProvidersWrapper } from "../components/ProvidersWrapper";
 
@@ -20,9 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ProvidersWrapper>
-          <div className="fixed top-4 right-4 z-50">
-            <ConnectButton />
-          </div>
+          <Header />
           {children}
         </ProvidersWrapper>
       </body>

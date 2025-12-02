@@ -5,3 +5,8 @@
 [dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
 Server listening on port 3001
 Database initialized
+Client connected: HgvEAuhVsNWWkBXnAAAC
+Guest joined table micro
+Client disconnected: HgvEAuhVsNWWkBXnAAAC
+Client connected: P-srFzVu0a7kScacAAAF
+0x5394...4213 joined table micro

@@ -10,14 +10,14 @@ export function setupSocketHandlers(io: Server) {
     io.on("connection", (socket: Socket) => {
         console.log("Client connected:", socket.id);
 
-        socket.on("join_table", async ({ tableId, name, address }: { tableId: string; name: string; address?: string }) => {
+        socket.on("join_table", async ({ tableId, name, address, buyInAmount }: { tableId: string; name: string; address?: string; buyInAmount?: number }) => {
             const table = tables[tableId] || tables["default"];
 
             const player: Player = {
                 id: socket.id,
                 address,
                 name: name || `Player ${socket.id.substr(0, 4)}`,
-                chips: 1000, // Default chips for play money
+                chips: buyInAmount || 1000, // Use provided buy-in or default
                 bet: 0,
                 folded: false,
                 cards: [],

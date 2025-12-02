@@ -16,8 +16,11 @@ export class Database {
                 hands_played INTEGER DEFAULT 0,
                 hands_won INTEGER DEFAULT 0,
                 chips_won INTEGER DEFAULT 0,
+                chips_won INTEGER DEFAULT 0,
                 pfr_count INTEGER DEFAULT 0,
                 pfr_opportunity INTEGER DEFAULT 0,
+                vpip_count INTEGER DEFAULT 0,
+                vpip_opportunity INTEGER DEFAULT 0,
                 three_bet_count INTEGER DEFAULT 0,
                 three_bet_opportunity INTEGER DEFAULT 0
             );
@@ -29,6 +32,16 @@ export class Database {
                 pot_size INTEGER,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 hand_description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS player_game_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id INTEGER,
+                address TEXT,
+                net_profit INTEGER,
+                hand_description TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(game_id) REFERENCES game_history(id)
             );
         `);
     }
@@ -49,6 +62,8 @@ export class Database {
         chips_won?: number,
         pfr_count?: number,
         pfr_opportunity?: number,
+        vpip_count?: number,
+        vpip_opportunity?: number,
         three_bet_count?: number,
         three_bet_opportunity?: number
     }) {
@@ -72,11 +87,25 @@ export class Database {
         winner_address: string,
         pot_size: number,
         hand_description: string
+    }): Promise<number> {
+        if (!this.db) throw new Error("DB not initialized");
+        const result = await this.db.run(
+            'INSERT INTO game_history (table_id, winner_address, pot_size, hand_description) VALUES (?, ?, ?, ?)',
+            gameData.table_id, gameData.winner_address, gameData.pot_size, gameData.hand_description
+        );
+        return result.lastID!;
+    }
+
+    async addPlayerGameHistory(historyData: {
+        game_id: number,
+        address: string,
+        net_profit: number,
+        hand_description: string
     }) {
         if (!this.db) throw new Error("DB not initialized");
         await this.db.run(
-            'INSERT INTO game_history (table_id, winner_address, pot_size, hand_description) VALUES (?, ?, ?, ?)',
-            gameData.table_id, gameData.winner_address, gameData.pot_size, gameData.hand_description
+            'INSERT INTO player_game_history (game_id, address, net_profit, hand_description) VALUES (?, ?, ?, ?)',
+            historyData.game_id, historyData.address, historyData.net_profit, historyData.hand_description
         );
     }
 
@@ -85,7 +114,7 @@ export class Database {
         // For now, just return all history where the user was the winner, 
         // or we could add a many-to-many table for players in a game.
         // Simplified: Return history where user won.
-        return await this.db.all('SELECT * FROM game_history WHERE winner_address = ? ORDER BY timestamp DESC LIMIT 50', address);
+        return await this.db.all('SELECT * FROM player_game_history WHERE address = ? ORDER BY timestamp DESC LIMIT 50', address);
     }
 }
 

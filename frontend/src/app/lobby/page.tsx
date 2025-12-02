@@ -35,12 +35,7 @@ export default function Lobby() {
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                         Game Lobby
                     </h1>
-                    <button
-                        onClick={() => router.push('/dashboard')}
-                        className="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
-                    >
-                        My Dashboard
-                    </button>
+
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

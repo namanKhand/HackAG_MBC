@@ -36,7 +36,7 @@ export default function TablePage() {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-slate-900 text-white">
-            <PokerTable tableId={tableId} playerName={playerName} />
+            <PokerTable tableId={tableId} playerName={playerName} mode={mode || 'real'} />
         </main>
     );
 }
