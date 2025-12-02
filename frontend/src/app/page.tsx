@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useRouter } from 'next/navigation';
 
@@ -10,22 +9,13 @@ export default function Home() {
   const { disconnect } = useDisconnect();
   const router = useRouter();
 
-  const [name, setName] = useState('');
-  const [gameMode, setGameMode] = useState<'play' | 'real' | null>(null);
-
-  const joinTable = (tableId: string) => {
-    if (gameMode === 'play') {
-      if (!name) {
-        alert('Please enter a name');
-        return;
-      }
-      router.push(`/table/${tableId}?name=${name}&mode=play`);
+  const handleModeSelect = (mode: 'paper' | 'real') => {
+    if (mode === 'real' && !isConnected) {
+      // If real money and not connected, maybe show connect options or just redirect to lobby where it will prompt
+      // For now, let's redirect to lobby with mode=real, and lobby can handle connection prompt
+      router.push('/lobby?mode=real');
     } else {
-      if (!isConnected) {
-        alert('Please connect wallet');
-        return;
-      }
-      router.push(`/table/${tableId}?mode=real`);
+      router.push(`/lobby?mode=${mode}`);
     }
   };
 
@@ -34,108 +24,68 @@ export default function Home() {
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
 
-      <div className="z-10 w-full max-w-4xl flex flex-col items-center animate-fade-in">
+      <div className="z-10 w-full max-w-6xl flex flex-col items-center">
         <h1 className="text-7xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-red-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] text-center">
           Base Poker
         </h1>
-        <p className="text-xl text-gray-300 mb-12 font-light tracking-widest uppercase">The Future of On-Chain Poker</p>
+        <p className="text-xl text-gray-300 mb-16 font-light tracking-widest uppercase">The Future of On-Chain Poker</p>
 
-        {!gameMode ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-            {/* Play Money Card */}
-            <button
-              onClick={() => setGameMode('play')}
-              className="group relative h-80 bg-gradient-to-br from-gray-900 to-black rounded-3xl border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_50px_rgba(220,38,38,0.2)] hover:-translate-y-2"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-red-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
-              <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">🃏</div>
-              <h2 className="text-3xl font-bold mb-2 text-white group-hover:text-red-400 transition-colors">Play Money</h2>
-              <p className="text-gray-400 text-center">Practice your skills with free chips. No wallet required.</p>
-            </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full px-4">
+          {/* Paper Money Option (Left) */}
+          <button
+            onClick={() => handleModeSelect('paper')}
+            className="group relative h-96 bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-green-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(34,197,94,0.2)] hover:-translate-y-2 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">🎮</div>
+            <h2 className="text-4xl font-bold mb-4 text-white group-hover:text-green-400 transition-colors">Paper Money</h2>
+            <p className="text-gray-400 text-center text-lg max-w-xs">Practice your skills risk-free with virtual chips.</p>
+            <div className="mt-8 px-8 py-3 bg-white/5 rounded-full border border-white/10 group-hover:bg-green-500/20 group-hover:border-green-500/30 transition-all">
+              <span className="text-sm font-mono text-green-300">Free Play</span>
+            </div>
+          </button>
 
-            {/* Real Money Card */}
-            <button
-              onClick={() => setGameMode('real')}
-              className="group relative h-80 bg-gradient-to-br from-gray-900 to-black rounded-3xl border border-white/10 p-8 flex flex-col items-center justify-center hover:border-blue-500/50 transition-all duration-500 hover:shadow-[0_0_50px_rgba(59,130,246,0.2)] hover:-translate-y-2"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
-              <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">💰</div>
-              <h2 className="text-3xl font-bold mb-2 text-white group-hover:text-blue-400 transition-colors">Real Money</h2>
-              <p className="text-gray-400 text-center">Play with USDC on Base. Connect wallet to join.</p>
-            </button>
-          </div>
-        ) : (
-          <div className="w-full max-w-md bg-black/80 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-2xl animate-scale-up">
-            <button
-              onClick={() => setGameMode(null)}
-              className="mb-6 text-gray-400 hover:text-white flex items-center gap-2 transition-colors"
-            >
-              ← Back to Modes
-            </button>
+          {/* Real Money Option (Right) */}
+          <button
+            onClick={() => handleModeSelect('real')}
+            className="group relative h-96 bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] hover:-translate-y-2 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">💰</div>
+            <h2 className="text-4xl font-bold mb-4 text-white group-hover:text-red-400 transition-colors">Real Money</h2>
+            <p className="text-gray-400 text-center text-lg max-w-xs">Play with USDC on Base. High stakes, high rewards.</p>
+            <div className="mt-8 px-8 py-3 bg-white/5 rounded-full border border-white/10 group-hover:bg-red-500/20 group-hover:border-red-500/30 transition-all">
+              <span className="text-sm font-mono text-red-300">USDC • Base</span>
+            </div>
+          </button>
+        </div>
 
-            {gameMode === 'play' ? (
-              <div className="flex flex-col gap-6">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-red-500 mb-2">Play Money Mode</h2>
-                  <p className="text-gray-400 text-sm">Enter a display name to sit at the table.</p>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Enter Display Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all text-lg text-center"
-                />
-                <button
-                  onClick={() => joinTable('default')}
-                  className="w-full bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white py-4 rounded-xl font-bold text-xl shadow-lg transition-all transform active:scale-95"
-                >
-                  Join Table
-                </button>
+        {/* Wallet Status / Connect (Optional Footer) */}
+        <div className="mt-16">
+          {!isConnected ? (
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-gray-500 text-sm">Connect wallet for Real Money play</p>
+              <div className="flex gap-3">
+                {connectors.map((connector) => (
+                  <button
+                    key={connector.uid}
+                    onClick={() => connect({ connector })}
+                    className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold transition-all"
+                  >
+                    {connector.name}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-blue-500 mb-2">Real Money Mode</h2>
-                  <p className="text-gray-400 text-sm">Connect your wallet to play with USDC.</p>
-                </div>
-
-                {!isConnected ? (
-                  <div className="flex flex-col gap-3">
-                    {connectors.map((connector) => (
-                      <button
-                        key={connector.uid}
-                        onClick={() => connect({ connector })}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
-                      >
-                        Connect {connector.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-xl text-center">
-                      <p className="text-sm text-gray-400 mb-1">Connected as</p>
-                      <p className="font-mono text-blue-300 truncate">{address}</p>
-                    </div>
-                    <button
-                      onClick={() => joinTable('default')}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white py-4 rounded-xl font-bold text-xl shadow-lg transition-all transform active:scale-95"
-                    >
-                      Join Table
-                    </button>
-                    <button
-                      onClick={() => disconnect()}
-                      className="text-sm text-red-400 hover:text-red-300 underline"
-                    >
-                      Disconnect Wallet
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <button
+              onClick={() => disconnect()}
+              className="px-6 py-2 text-gray-500 hover:text-white transition-colors text-sm"
+            >
+              Connected: {address?.slice(0, 6)}...{address?.slice(-4)} (Disconnect)
+            </button>
+          )}
+        </div>
       </div>
     </main>
   );

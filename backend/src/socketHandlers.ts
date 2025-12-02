@@ -24,7 +24,13 @@ export function setupSocketHandlers(io: Server) {
                 seat: -1,
                 isTurn: false,
                 hasActed: false,
-                status: 'active'
+                status: 'active',
+                stats: {
+                    pfr: false,
+                    vpip: false,
+                    threeBet: false,
+                    threeBetOpp: false
+                }
             };
 
             if (table.addPlayer(player)) {

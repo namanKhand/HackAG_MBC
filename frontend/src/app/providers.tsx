@@ -1,14 +1,17 @@
 'use client';
 
-import { WagmiProvider, createConfig, http } from 'wagmi';
+import '@rainbow-me/rainbowkit/styles.css';
+import { getDefaultConfig, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
 import { baseSepolia } from 'wagmi/chains';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createClient } from 'viem';
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode, useState } from 'react';
 
-const config = createConfig({
+const config = getDefaultConfig({
+    appName: 'Base Poker',
+    projectId: 'YOUR_PROJECT_ID',
     chains: [baseSepolia],
-    client: ({ chain }) => createClient({ chain, transport: http() }),
+    ssr: true,
 });
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -17,7 +20,9 @@ export function Providers({ children }: { children: ReactNode }) {
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
-                {children}
+                <RainbowKitProvider theme={darkTheme()}>
+                    {children}
+                </RainbowKitProvider>
             </QueryClientProvider>
         </WagmiProvider>
     );

@@ -21,8 +21,34 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3001;
 
+// Initialize Database
+import { db } from "./database";
+db.init().then(() => {
+    console.log("Database initialized");
+}).catch(err => {
+    console.error("Failed to initialize database", err);
+});
+
 app.get("/", (req, res) => {
     res.send("Poker Game Server Running");
+});
+
+app.get("/api/user/:address", async (req, res) => {
+    try {
+        const user = await db.getUser(req.params.address);
+        res.json(user);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch user" });
+    }
+});
+
+app.get("/api/history/:address", async (req, res) => {
+    try {
+        const history = await db.getGameHistory(req.params.address);
+        res.json(history);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch history" });
+    }
 });
 
 setupSocketHandlers(io);

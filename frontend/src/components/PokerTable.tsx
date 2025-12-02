@@ -64,10 +64,10 @@ export default function PokerTable({ tableId, playerName }: { tableId: string; p
 
     useEffect(() => {
         const newSocket = io('http://localhost:3001');
-        setSocket(newSocket);
 
         newSocket.on('connect', () => {
             console.log('Connected to server');
+            setSocket(newSocket);
             newSocket.emit('join_table', { tableId, name: playerName, address });
         });
 

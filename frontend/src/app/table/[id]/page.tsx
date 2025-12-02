@@ -2,8 +2,8 @@
 
 import PokerTable from '@/components/PokerTable';
 import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAccount } from 'wagmi';
-import { useEffect, useState } from 'react';
 
 export default function TablePage() {
     const params = useParams();
@@ -14,15 +14,9 @@ export default function TablePage() {
     const mode = searchParams.get('mode');
     const nameParam = searchParams.get('name');
 
-    const [playerName, setPlayerName] = useState('');
-
-    useEffect(() => {
-        if (mode === 'real' && address) {
-            setPlayerName(`${address.slice(0, 6)}...${address.slice(-4)}`);
-        } else {
-            setPlayerName(nameParam || 'Guest');
-        }
-    }, [mode, address, nameParam]);
+    const playerName = (mode === 'real' && address)
+        ? `${address.slice(0, 6)}...${address.slice(-4)}`
+        : (nameParam || 'Guest');
 
     if (mode === 'real' && !isConnected) {
         return (
@@ -30,7 +24,9 @@ export default function TablePage() {
                 <div className="text-center">
                     <h1 className="text-2xl font-bold mb-4">Wallet Disconnected</h1>
                     <p className="mb-4">Please connect your wallet to play Real Money poker.</p>
-                    <a href="/" className="text-blue-400 hover:underline">Return to Home</a>
+                    <Link href="/" className="text-gray-400 hover:text-white mb-8 inline-block transition-colors">
+                        ← Back to Lobby
+                    </Link>
                 </div>
             </main>
         );

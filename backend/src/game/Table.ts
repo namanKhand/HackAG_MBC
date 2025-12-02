@@ -1,5 +1,7 @@
 import { Deck, Card } from './Deck';
+// @ts-ignore
 import { Hand } from 'pokersolver';
+import { db } from '../database';
 
 export interface Player {
     id: string; // Socket ID
@@ -13,6 +15,13 @@ export interface Player {
     isTurn: boolean;
     hasActed: boolean;
     status: 'active' | 'sitting_out';
+    // Stats for current hand
+    stats: {
+        pfr: boolean;
+        vpip: boolean;
+        threeBet: boolean;
+        threeBetOpp: boolean;
+    };
 }
 
 export class Table {
@@ -100,12 +109,19 @@ export class Table {
                 p.bet = 0;
                 p.isTurn = false;
                 p.hasActed = false;
+                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
+
+                // Update hands played
+                if (p.address) {
+                    db.updateUserStats(p.address, { hands_played: 1 });
+                }
             } else if (p) {
                 p.cards = [];
                 p.folded = true;
                 p.bet = 0;
                 p.isTurn = false;
                 p.hasActed = false;
+                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
             }
         });
 
@@ -209,6 +225,24 @@ export class Table {
             player.hasActed = true;
         }
 
+        if (action === 'call') {
+            player.stats.vpip = true;
+        } else if (action === 'raise') {
+            player.stats.vpip = true;
+            if (this.stage === 'preflop') {
+                player.stats.pfr = true;
+                // Simple 3-bet detection: if current bet > big blind, it's a 3-bet (or 4-bet etc)
+                if (this.currentBet > this.bigBlind) {
+                    player.stats.threeBet = true;
+                }
+            }
+        }
+
+        // Track 3-bet opportunity
+        if (this.stage === 'preflop' && this.currentBet > this.bigBlind && player.isTurn) {
+            player.stats.threeBetOpp = true;
+        }
+
         player.isTurn = false;
         this.advanceTurn();
         return true;
@@ -272,6 +306,33 @@ export class Table {
         winners.forEach((w: any) => {
             // @ts-ignore
             w.player.chips += share;
+
+            // Persist Winner Stats
+            if (w.player.address) {
+                db.updateUserStats(w.player.address, {
+                    hands_won: 1,
+                    chips_won: share
+                });
+
+                db.addGameHistory({
+                    table_id: this.id,
+                    winner_address: w.player.address,
+                    pot_size: this.pot,
+                    hand_description: w.name // Hand name e.g. "Two Pair"
+                });
+            }
+        });
+
+        // Persist Player Stats (PFR, etc)
+        activePlayers.forEach(p => {
+            if (p && p.address) {
+                db.updateUserStats(p.address, {
+                    pfr_count: p.stats.pfr ? 1 : 0,
+                    pfr_opportunity: 1, // Every hand is PFR opp for now
+                    three_bet_count: p.stats.threeBet ? 1 : 0,
+                    three_bet_opportunity: p.stats.threeBetOpp ? 1 : 0
+                });
+            }
         });
 
         this.gameActive = false;

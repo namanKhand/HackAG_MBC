@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import "./globals.css";
-import { Providers } from "./providers";
+import { ProvidersWrapper } from "../components/ProvidersWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <ProvidersWrapper>
+          <div className="fixed top-4 right-4 z-50">
+            <ConnectButton />
+          </div>
+          {children}
+        </ProvidersWrapper>
       </body>
     </html>
   );
