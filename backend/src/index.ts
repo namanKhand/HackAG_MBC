@@ -1,14 +1,12 @@
+import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import dotenv from "dotenv";
 import { setupSocketHandlers } from "./socketHandlers";
 import { BlockchainListener } from "./BlockchainListener";
 import { db } from "./database";
 import { generateToken, verifyToken, hashPassword, comparePassword } from "./auth";
-
-dotenv.config();
 
 const app = express();
 app.use(cors());

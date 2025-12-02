@@ -44,37 +44,57 @@ const VAULT_ABI = [
 
 // Helper to verify deposit on-chain
 async function verifyDeposit(txHash: string, userAddress: string): Promise<number | null> {
-    if (!MIDDLEMAN_VAULT_ADDRESS) return null;
+    const MIDDLEMAN_VAULT_ADDRESS = process.env.MIDDLEMAN_VAULT_ADDRESS;
+    const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
+
+    if (!MIDDLEMAN_VAULT_ADDRESS) {
+        console.log("VerifyDeposit: Missing MIDDLEMAN_VAULT_ADDRESS");
+        return null;
+    }
 
     try {
+        console.log(`VerifyDeposit: Checking tx ${txHash} for user ${userAddress}`);
         const provider = new ethers.JsonRpcProvider(RPC_URL);
         const receipt = await provider.getTransactionReceipt(txHash);
 
-        if (!receipt || receipt.status !== 1) {
-            console.log(`Tx ${txHash} failed or not found`);
+        if (!receipt) {
+            console.log(`VerifyDeposit: Tx ${txHash} not found`);
+            return null;
+        }
+        if (receipt.status !== 1) {
+            console.log(`VerifyDeposit: Tx ${txHash} status is ${receipt.status}`);
             return null;
         }
 
         const vaultInterface = new ethers.Interface(VAULT_ABI);
+        console.log(`VerifyDeposit: Found ${receipt.logs.length} logs. Vault Address: ${MIDDLEMAN_VAULT_ADDRESS}`);
 
         for (const log of receipt.logs) {
+            console.log(`VerifyDeposit: Checking log from ${log.address}`);
             if (log.address.toLowerCase() === MIDDLEMAN_VAULT_ADDRESS.toLowerCase()) {
                 try {
                     const parsed = vaultInterface.parseLog(log);
+                    console.log(`VerifyDeposit: Parsed log: ${parsed?.name}, Args: ${parsed?.args}`);
                     if (parsed && parsed.name === 'Deposited') {
                         const depositor = parsed.args[0];
                         const amount = parsed.args[1];
+                        console.log(`VerifyDeposit: Depositor: ${depositor}, Amount: ${amount}`);
 
                         if (depositor.toLowerCase() === userAddress.toLowerCase()) {
                             // Return amount in chips (assuming 6 decimals for USDC)
                             return Number(ethers.formatUnits(amount, 6));
+                        } else {
+                            console.log(`VerifyDeposit: Depositor mismatch. Expected ${userAddress}, got ${depositor}`);
                         }
                     }
                 } catch (e) {
-                    // Ignore logs that don't match ABI
+                    console.log(`VerifyDeposit: Failed to parse log: ${e}`);
                 }
+            } else {
+                console.log(`VerifyDeposit: Log address mismatch. Expected ${MIDDLEMAN_VAULT_ADDRESS}, got ${log.address}`);
             }
         }
+        console.log("VerifyDeposit: No matching Deposited event found");
         return null;
     } catch (err) {
         console.error("Error verifying deposit:", err);
