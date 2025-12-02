@@ -97,7 +97,7 @@ export function setupSocketHandlers(io: Server) {
                 id: socket.id,
                 address,
                 name: name || `Player ${socket.id.substr(0, 4)}`,
-                chips: buyInAmount || 1000, // Use provided buy-in or default
+                chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
                 bet: 0,
                 folded: false,
