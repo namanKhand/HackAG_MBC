@@ -86,7 +86,7 @@ function LobbyContent() {
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {TABLES.map((table) => (
+                    {TABLES.filter(t => (mode === 'real' ? t.isRealMoney : !t.isRealMoney)).map((table) => (
                         <div
                             key={table.id}
                             className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 hover:border-blue-500/50 transition-all hover:-translate-y-1 hover:shadow-xl group"

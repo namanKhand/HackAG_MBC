@@ -3,6 +3,7 @@
 import { Providers } from '../app/providers';
 import ErrorBoundary from './ErrorBoundary';
 import { useState, useEffect, ReactNode } from 'react';
+import { AuthProvider } from '../context/AuthContext';
 
 export function ProvidersWrapper({ children }: { children: ReactNode }) {
     const [mounted, setMounted] = useState(false);
@@ -18,7 +19,11 @@ export function ProvidersWrapper({ children }: { children: ReactNode }) {
 
     return (
         <ErrorBoundary>
-            <Providers>{children}</Providers>
+            <Providers>
+                <AuthProvider>
+                    {children}
+                </AuthProvider>
+            </Providers>
         </ErrorBoundary>
     );
 }

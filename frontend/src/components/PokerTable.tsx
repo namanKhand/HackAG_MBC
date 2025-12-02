@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../context/AuthContext';
 
 import { useBalance } from 'wagmi';
 import { USDC_ADDRESS } from '../constants';
@@ -77,6 +78,7 @@ export default function PokerTable({
     initialTxHash?: string;
 }) {
     const { address } = useAccount();
+    const { token } = useAuth();
     const router = useRouter();
     const { data: balanceData } = useBalance({
         address: address,
@@ -113,22 +115,15 @@ export default function PokerTable({
                 newSocket.emit('create_table', { tableId });
             }
 
-            // If initialBuyIn is provided, auto-join
-            // Wait for 'table_created' if we are creating? 
-            // Actually, 'create_table' is synchronous-ish on backend, but let's be safe.
-            // If we emit create, then join immediately, it might race?
-            // Backend handles create synchronously.
-
             if (initialBuyIn) {
-                // Small delay to ensure create happens first if needed?
-                // Or just emit join.
                 setTimeout(() => {
                     newSocket.emit('join_table', {
                         tableId,
                         name: playerName,
                         address,
                         buyInAmount: initialBuyIn,
-                        txHash: initialTxHash
+                        txHash: initialTxHash,
+                        token
                     });
                 }, 100);
             }
@@ -172,7 +167,7 @@ export default function PokerTable({
         return () => {
             newSocket.disconnect();
         };
-    }, [tableId, playerName, address, initialBuyIn, initialTxHash]);
+    }, [tableId, playerName, address, initialBuyIn, initialTxHash, token]);
 
     const handleAction = (action: string, amount?: number) => {
         if (socket) {
@@ -183,7 +178,13 @@ export default function PokerTable({
     const handleJoinTable = () => {
         if (socket) {
             // For now, manual join assumes Paper mode or future integration.
-            socket.emit('join_table', { tableId, name: playerName, address, buyInAmount: effectiveBuyIn });
+            socket.emit('join_table', {
+                tableId,
+                name: playerName,
+                address,
+                buyInAmount: effectiveBuyIn,
+                token
+            });
             setShowBuyInModal(false);
         }
     };

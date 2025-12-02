@@ -182,15 +182,31 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
                             Balance: {balance?.formatted ? Number(balance.formatted).toFixed(2) : '0.00'} USDC
                         </span>
                     </div>
-                    <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                        min={minBuyIn}
-                        max={maxBuyIn}
-                        disabled={isPending}
-                    />
+                    <div className="relative">
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 pr-24"
+                            min={minBuyIn}
+                            max={maxBuyIn}
+                            disabled={isPending}
+                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                            <button
+                                onClick={() => setAmount(minBuyIn.toString())}
+                                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors"
+                            >
+                                MIN
+                            </button>
+                            <button
+                                onClick={() => setAmount(maxBuyIn.toString())}
+                                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors"
+                            >
+                                MAX
+                            </button>
+                        </div>
+                    </div>
                     <div className="flex justify-between text-xs text-gray-500 mt-2">
                         <span>Min: ${minBuyIn}</span>
                         <span>Max: ${maxBuyIn}</span>

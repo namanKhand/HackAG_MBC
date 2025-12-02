@@ -1,11 +1,36 @@
 import { Server, Socket } from "socket.io";
 import { Table, Player } from "./game/Table";
 import { ethers } from "ethers";
+import { verifyToken } from "./auth";
+import { db } from "./database";
 
 const tables: Record<string, Table> = {};
 
 // Create a default table
 tables["default"] = new Table("default");
+
+// Initialize Public Tables
+const PUBLIC_TABLES = [
+    { id: 'micro', name: 'Micro Stakes', smallBlind: 0.01, bigBlind: 0.02, isRealMoney: true },
+    { id: 'low', name: 'Low Stakes', smallBlind: 1, bigBlind: 2, isRealMoney: true },
+    { id: 'mid', name: 'Mid Stakes', smallBlind: 5, bigBlind: 10, isRealMoney: true },
+    { id: 'high', name: 'High Stakes', smallBlind: 50, bigBlind: 100, isRealMoney: true },
+    { id: 'play_micro', name: 'Play Money Micro', smallBlind: 1, bigBlind: 2, isRealMoney: false },
+    { id: 'play_high', name: 'Play Money High', smallBlind: 50, bigBlind: 100, isRealMoney: false },
+];
+
+PUBLIC_TABLES.forEach(config => {
+    tables[config.id] = new Table({
+        id: config.id,
+        name: config.name,
+        smallBlind: config.smallBlind,
+        bigBlind: config.bigBlind,
+        isPublic: true
+    });
+    // @ts-ignore - attaching extra prop for now
+    tables[config.id].isRealMoney = config.isRealMoney;
+    console.log(`Initialized public table: ${config.name} (${config.id}) - RealMoney: ${config.isRealMoney}`);
+});
 
 const MIDDLEMAN_PRIVATE_KEY = process.env.MIDDLEMAN_WALLET_PRIVATE_KEY;
 const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
@@ -93,6 +118,9 @@ export function setupSocketHandlers(io: Server) {
         socket.on("create_table", ({ tableId }: { tableId: string }) => {
             if (!tables[tableId]) {
                 tables[tableId] = new Table(tableId);
+                // Private tables are play money by default for now, or we can add a flag
+                // @ts-ignore
+                tables[tableId].isRealMoney = false;
                 console.log(`Created new table: ${tableId}`);
                 socket.emit("table_created", { tableId });
             } else {
@@ -100,7 +128,7 @@ export function setupSocketHandlers(io: Server) {
             }
         });
 
-        socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string }) => {
+        socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash, token }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string, token?: string }) => {
             const table = tables[tableId];
 
             if (!table) {
@@ -108,10 +136,51 @@ export function setupSocketHandlers(io: Server) {
                 return;
             }
 
+            // Authentication Check
+            if (!token) {
+                socket.emit("error", "Authentication required");
+                return;
+            }
+
+            const payload: any = verifyToken(token);
+            if (!payload) {
+                socket.emit("error", "Invalid token");
+                return;
+            }
+
+            const user = await db.getAccountById(payload.id);
+            if (!user) {
+                socket.emit("error", "User not found");
+                return;
+            }
+
+            // @ts-ignore
+            const isRealMoney = table.isRealMoney;
+
+            if (isRealMoney) {
+                if (user.is_guest) {
+                    socket.emit("error", "Guests cannot play real money games");
+                    return;
+                }
+
+                // Check if wallet is linked
+                const linkedWallets = await db.getWalletsForAccount(user.id);
+                if (!address || !linkedWallets.includes(address)) {
+                    socket.emit("error", "Wallet not linked to account");
+                    return;
+                }
+
+                // Verify deposit
+                if (!txHash) {
+                    socket.emit("error", "Deposit transaction required");
+                    return;
+                }
+            }
+
             const player: Player = {
                 id: socket.id,
                 address,
-                name: name || `Player ${socket.id.substr(0, 4)}`,
+                name: user.username, // Use account username
                 chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
                 bet: 0,
@@ -130,7 +199,7 @@ export function setupSocketHandlers(io: Server) {
             };
 
             // Verify deposit if txHash is provided (Real Money Mode)
-            if (txHash && address) {
+            if (isRealMoney && txHash && address) {
                 console.log(`Verifying deposit for ${name}...`);
                 const verifiedAmount = await verifyDeposit(txHash, address);
                 if (verifiedAmount) {
@@ -142,6 +211,10 @@ export function setupSocketHandlers(io: Server) {
                     socket.emit("error", "Invalid deposit transaction");
                     return;
                 }
+            } else if (!isRealMoney) {
+                // Play money - give free chips if needed or use buyInAmount
+                player.chips = buyInAmount || 1000;
+                player.startHandChips = player.chips;
             }
 
             if (table.addPlayer(player)) {
@@ -152,7 +225,7 @@ export function setupSocketHandlers(io: Server) {
                 for (const s of sockets) {
                     s.emit("table_state", table.getForPlayer(s.id));
                 }
-                console.log(`${name} joined table ${tableId}`);
+                console.log(`${player.name} joined table ${tableId}`);
             } else {
                 socket.emit("error", "Table full");
             }

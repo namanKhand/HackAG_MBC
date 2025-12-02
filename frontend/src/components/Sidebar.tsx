@@ -2,7 +2,8 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -12,6 +13,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const { user, logout } = useAuth();
 
     const navItems = [
         { name: 'Home', path: '/', icon: Home },
@@ -41,6 +43,21 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                         POKER
                     </span>
                 )}
+            </div>
+
+            {/* User Info */}
+            <div className="p-4 border-b border-white/5">
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
+                    <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center text-blue-400">
+                        <User size={16} />
+                    </div>
+                    {!isCollapsed && (
+                        <div className="ml-3 overflow-hidden">
+                            <p className="text-sm font-medium text-white truncate">{user?.username}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.isGuest ? 'Guest' : user?.email}</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Navigation */}
@@ -74,8 +91,8 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                 })}
             </nav>
 
-            {/* Wallet Connection */}
-            <div className="p-4 border-t border-white/5 bg-zinc-950/50">
+            {/* Wallet Connection & Logout */}
+            <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-4">
                 <div className={`transition-all duration-300 ${isCollapsed ? 'scale-75 origin-center -ml-1' : ''}`}>
                     <ConnectButton
                         showBalance={!isCollapsed}
@@ -83,6 +100,14 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                         chainStatus={isCollapsed ? "none" : "full"}
                     />
                 </div>
+
+                <button
+                    onClick={logout}
+                    className={`w-full flex items-center p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
+                >
+                    <LogOut size={20} />
+                    {!isCollapsed && <span className="ml-2 font-medium">Logout</span>}
+                </button>
             </div>
         </div>
     );

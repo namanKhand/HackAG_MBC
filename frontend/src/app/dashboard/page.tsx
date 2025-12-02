@@ -3,51 +3,74 @@
 import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
+import { useState } from 'react';
 
 export default function Dashboard() {
     const { address, isConnected } = useAccount();
+    const { user, token, refreshUser } = useAuth();
     const router = useRouter();
+    const [linking, setLinking] = useState(false);
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['userStats', address],
+        queryKey: ['accountStats', user?.id],
         queryFn: async () => {
-            if (!address) return null;
-            const res = await fetch(`http://localhost:3001/api/user/${address}`);
+            if (!token) return null;
+            const res = await fetch(`http://localhost:3001/api/account/stats`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) return null;
             return res.json();
         },
-        enabled: !!address
+        enabled: !!token
     });
 
     const { data: history, isLoading: historyLoading } = useQuery({
-        queryKey: ['userHistory', address],
+        queryKey: ['accountHistory', user?.id],
         queryFn: async () => {
-            if (!address) return null;
-            const res = await fetch(`http://localhost:3001/api/history/${address}`);
-            return res.json();
+            if (!token) return [];
+            const res = await fetch(`http://localhost:3001/api/account/history`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
         },
-        enabled: !!address
+        enabled: !!token
     });
 
-    if (!isConnected) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold mb-4">Please Connect Wallet</h1>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="px-6 py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-500"
-                    >
-                        Go Home
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    const linkWallet = async () => {
+        if (!address || !token) return;
+        setLinking(true);
+        try {
+            const res = await fetch('http://localhost:3001/api/account/wallet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ address })
+            });
+            if (res.ok) {
+                await refreshUser();
+                alert('Wallet linked successfully!');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to link wallet');
+            }
+        } catch (e) {
+            alert('Error linking wallet');
+        } finally {
+            setLinking(false);
+        }
+    };
 
     const calculateStat = (count: number, opp: number) => {
         if (!opp || opp === 0) return '0%';
         return `${((count / opp) * 100).toFixed(1)}%`;
     };
+
+    const isWalletLinked = user?.wallets?.includes(address || '');
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -55,10 +78,46 @@ export default function Dashboard() {
                 <header className="flex justify-between items-center mb-12">
                     <div>
                         <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-                        <p className="font-mono text-gray-400">{address}</p>
+                        <p className="font-mono text-gray-400">Welcome, {user?.username}</p>
                     </div>
-
                 </header>
+
+                {/* Wallet Linking Section */}
+                <div className="bg-gray-800/30 border border-gray-700 p-6 rounded-2xl mb-12 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold mb-2">Connected Wallets</h3>
+                        <div className="flex gap-2 flex-wrap">
+                            {user?.wallets && user.wallets.length > 0 ? (
+                                user.wallets.map(w => (
+                                    <span key={w} className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-mono border border-blue-800">
+                                        {w.slice(0, 6)}...{w.slice(-4)}
+                                    </span>
+                                ))
+                            ) : (
+                                <p className="text-gray-500">No wallets linked yet.</p>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        {isConnected ? (
+                            !isWalletLinked ? (
+                                <button
+                                    onClick={linkWallet}
+                                    disabled={linking}
+                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition disabled:opacity-50"
+                                >
+                                    {linking ? 'Linking...' : 'Link Current Wallet'}
+                                </button>
+                            ) : (
+                                <span className="text-green-400 font-medium flex items-center">
+                                    ✓ Current Wallet Linked
+                                </span>
+                            )
+                        ) : (
+                            <p className="text-yellow-400 text-sm">Connect wallet to link it</p>
+                        )}
+                    </div>
+                </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -73,28 +132,22 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
-                        <h3 className="text-gray-400 text-sm mb-1">VPIP (Voluntarily Put In Pot)</h3>
+                        <h3 className="text-gray-400 text-sm mb-1">VPIP</h3>
                         <p className="text-3xl font-bold text-yellow-400">
                             {calculateStat(stats?.vpip_count, stats?.vpip_opportunity)}
                         </p>
                     </div>
                     <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
-                        <h3 className="text-gray-400 text-sm mb-1">PFR (Pre-Flop Raise)</h3>
+                        <h3 className="text-gray-400 text-sm mb-1">PFR</h3>
                         <p className="text-3xl font-bold text-blue-400">
                             {calculateStat(stats?.pfr_count, stats?.pfr_opportunity)}
-                        </p>
-                    </div>
-                    <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
-                        <h3 className="text-gray-400 text-sm mb-1">3-Bet %</h3>
-                        <p className="text-3xl font-bold text-purple-400">
-                            {calculateStat(stats?.three_bet_count, stats?.three_bet_opportunity)}
                         </p>
                     </div>
                 </div>
 
                 {/* Game History */}
                 <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8">
-                    <h2 className="text-2xl font-bold mb-6">Hand History (PnL Ledger)</h2>
+                    <h2 className="text-2xl font-bold mb-6">Hand History</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
