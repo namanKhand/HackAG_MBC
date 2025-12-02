@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
+import { useSearchParams } from 'next/navigation';
+import BuyInModal from '@/components/BuyInModal';
 
 const TABLES = [
     { id: 'micro', name: 'Micro Stakes', stakes: '0.1/0.2 USDC', minBuyIn: 20, maxBuyIn: 50 },
@@ -11,21 +13,36 @@ const TABLES = [
     { id: 'high', name: 'High Stakes', stakes: '50/100 USDC', minBuyIn: 5000, maxBuyIn: 10000 },
 ];
 
-import { useSearchParams } from 'next/navigation';
-
 export default function Lobby() {
     const router = useRouter();
     const { isConnected } = useAccount();
     const searchParams = useSearchParams();
     const mode = searchParams.get('mode') || 'real';
-    const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
-    const joinTable = (tableId: string) => {
-        if (mode === 'real' && !isConnected) {
-            alert('Please connect wallet first');
-            return;
+    const [selectedTable, setSelectedTable] = useState<typeof TABLES[0] | null>(null);
+    const [isBuyInOpen, setIsBuyInOpen] = useState(false);
+
+    const handleJoinClick = (table: typeof TABLES[0]) => {
+        if (mode === 'real') {
+            if (!isConnected) {
+                alert('Please connect wallet first');
+                return;
+            }
+            setSelectedTable(table);
+            setIsBuyInOpen(true);
+        } else {
+            // Paper money - just join
+            router.push(`/table/${table.id}?mode=paper`);
         }
-        router.push(`/table/${tableId}?mode=${mode}`);
+    };
+
+    const handleBuyInSuccess = (amount: number, txHash: string) => {
+        setIsBuyInOpen(false);
+        if (selectedTable) {
+            // Pass buy-in info via URL params or let backend handle it via socket later
+            // For now, we'll pass it in URL so the Table page knows to emit it
+            router.push(`/table/${selectedTable.id}?mode=real&buyIn=${amount}&tx=${txHash}`);
+        }
     };
 
     return (
@@ -35,7 +52,6 @@ export default function Lobby() {
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                         Game Lobby
                     </h1>
-
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -68,7 +84,7 @@ export default function Lobby() {
                             </div>
 
                             <button
-                                onClick={() => joinTable(table.id)}
+                                onClick={() => handleJoinClick(table)}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20"
                             >
                                 Join Table
@@ -77,6 +93,16 @@ export default function Lobby() {
                     ))}
                 </div>
             </div>
+
+            {selectedTable && (
+                <BuyInModal
+                    isOpen={isBuyInOpen}
+                    onClose={() => setIsBuyInOpen(false)}
+                    onSuccess={handleBuyInSuccess}
+                    minBuyIn={selectedTable.minBuyIn}
+                    maxBuyIn={selectedTable.maxBuyIn}
+                />
+            )}
         </div>
     );
 }

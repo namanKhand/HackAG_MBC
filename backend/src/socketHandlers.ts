@@ -1,10 +1,43 @@
 import { Server, Socket } from "socket.io";
 import { Table, Player } from "./game/Table";
+import { ethers } from "ethers";
 
 const tables: Record<string, Table> = {};
 
 // Create a default table
 tables["default"] = new Table("default");
+
+const MIDDLEMAN_PRIVATE_KEY = process.env.MIDDLEMAN_WALLET_PRIVATE_KEY;
+const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
+const USDC_ADDRESS = process.env.USDC_ADDRESS;
+
+// Helper to process payout
+async function processPayout(address: string, amount: number) {
+    if (!MIDDLEMAN_PRIVATE_KEY || !USDC_ADDRESS) {
+        console.error("Missing env vars for payout");
+        return;
+    }
+
+    try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const wallet = new ethers.Wallet(MIDDLEMAN_PRIVATE_KEY, provider);
+        const usdc = new ethers.Contract(USDC_ADDRESS, [
+            "function transfer(address to, uint256 amount) returns (bool)"
+        ], wallet);
+
+        // Amount is in chips (assumed 1 chip = 1 USDC for now, or scaled)
+        // If chips are 1:1 with USDC (6 decimals)
+        const payoutAmount = ethers.parseUnits(amount.toString(), 6);
+
+        console.log(`Processing payout of ${amount} USDC to ${address}...`);
+        const tx = await usdc.transfer(address, payoutAmount);
+        console.log(`Payout sent! Tx: ${tx.hash}`);
+        await tx.wait();
+        console.log(`Payout confirmed: ${tx.hash}`);
+    } catch (err) {
+        console.error("Payout failed:", err);
+    }
+}
 
 export function setupSocketHandlers(io: Server) {
     io.on("connection", (socket: Socket) => {
@@ -18,6 +51,7 @@ export function setupSocketHandlers(io: Server) {
                 address,
                 name: name || `Player ${socket.id.substr(0, 4)}`,
                 chips: buyInAmount || 1000, // Use provided buy-in or default
+                startHandChips: buyInAmount || 1000,
                 bet: 0,
                 folded: false,
                 cards: [],
@@ -119,15 +153,41 @@ export function setupSocketHandlers(io: Server) {
             }
         });
 
+        socket.on("leave_table", async ({ tableId }) => {
+            const table = tables[tableId];
+            if (table) {
+                const player = table.players.find(p => p?.id === socket.id);
+                if (player && player.chips > 0 && player.address) {
+                    await processPayout(player.address, player.chips);
+                    player.chips = 0; // Reset chips after payout
+                }
+                table.removePlayer(socket.id);
+
+                // Broadcast update
+                const sockets = await io.in(tableId).fetchSockets();
+                for (const s of sockets) {
+                    s.emit("table_state", table.getForPlayer(s.id));
+                }
+            }
+        });
+
         socket.on("disconnect", async () => {
             // Find player and remove
             for (const tableId in tables) {
                 const table = tables[tableId];
-                table.removePlayer(socket.id);
+                const player = table.players.find(p => p?.id === socket.id);
 
-                const sockets = await io.in(tableId).fetchSockets();
-                for (const s of sockets) {
-                    s.emit("table_state", table.getForPlayer(s.id));
+                if (player) {
+                    // Auto-payout on disconnect
+                    if (player.chips > 0 && player.address) {
+                        await processPayout(player.address, player.chips);
+                    }
+                    table.removePlayer(socket.id);
+
+                    const sockets = await io.in(tableId).fetchSockets();
+                    for (const s of sockets) {
+                        s.emit("table_state", table.getForPlayer(s.id));
+                    }
                 }
             }
             console.log("Client disconnected:", socket.id);
