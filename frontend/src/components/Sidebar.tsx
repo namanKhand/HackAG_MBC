@@ -15,7 +15,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { address } = useAccount();
     const { data: usdcBalance } = useBalance({
         address,
@@ -29,7 +29,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 
     return (
         <div
-            className={`fixed left-0 top-0 h-screen bg-zinc-950 border-r border-white/5 transition-all duration-300 z-50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
+            className={`fixed left-0 top-0 h-screen bg-black/30 backdrop-blur-md border-r border-white/10 transition-all duration-300 z-50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
                 }`}
         >
             {/* Toggle Button */}
@@ -61,7 +61,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                     {!isCollapsed && (
                         <div className="ml-3 overflow-hidden">
                             <p className="text-sm font-medium text-white truncate">{user?.username}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.isGuest ? 'Guest' : user?.email}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.isGuest ? 'Guest' : 'Connected'}</p>
                         </div>
                     )}
                 </div>
@@ -99,7 +99,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             </nav>
 
             {/* Wallet Connection & Logout */}
-            <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-4">
+            <div className="p-4 border-t border-white/10 bg-transparent space-y-4">
                 <div className={`transition-all duration-300 ${isCollapsed ? 'scale-75 origin-center -ml-1' : ''}`}>
                     <ConnectButton.Custom>
                         {({
@@ -206,13 +206,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                     </ConnectButton.Custom>
                 </div>
 
-                <button
-                    onClick={logout}
-                    className={`w-full flex items-center p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-                >
-                    <LogOut size={20} />
-                    {!isCollapsed && <span className="ml-2 font-medium">Logout</span>}
-                </button>
             </div>
         </div>
     );

@@ -1,7 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { Table, Player } from "./game/Table";
 import { ethers } from "ethers";
-import { verifyToken } from "./auth";
 import { db } from "./database";
 
 const tables: Record<string, Table> = {};
@@ -15,8 +14,6 @@ const PUBLIC_TABLES = [
     { id: 'low', name: 'Low Stakes', smallBlind: 1, bigBlind: 2, isRealMoney: true },
     { id: 'mid', name: 'Mid Stakes', smallBlind: 5, bigBlind: 10, isRealMoney: true },
     { id: 'high', name: 'High Stakes', smallBlind: 50, bigBlind: 100, isRealMoney: true },
-    { id: 'play_micro', name: 'Play Money Micro', smallBlind: 1, bigBlind: 2, isRealMoney: false },
-    { id: 'play_high', name: 'Play Money High', smallBlind: 50, bigBlind: 100, isRealMoney: false },
 ];
 
 PUBLIC_TABLES.forEach(config => {
@@ -148,7 +145,7 @@ export function setupSocketHandlers(io: Server) {
             }
         });
 
-        socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash, token }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string, token?: string }) => {
+        socket.on("join_table", async ({ tableId, name, address, buyInAmount, txHash }: { tableId: string; name: string; address?: string; buyInAmount?: number, txHash?: string }) => {
             const table = tables[tableId];
 
             if (!table) {
@@ -156,21 +153,17 @@ export function setupSocketHandlers(io: Server) {
                 return;
             }
 
-            // Authentication Check
-            if (!token) {
-                socket.emit("error", "Authentication required");
+            // Authentication Check (Simplified: Require address)
+            if (!address) {
+                socket.emit("error", "Wallet connection required");
                 return;
             }
 
-            const payload: any = verifyToken(token);
-            if (!payload) {
-                socket.emit("error", "Invalid token");
-                return;
-            }
-
-            const user = await db.getAccountById(payload.id);
+            // Get or create user by address
+            const user = await db.getUser(address);
             if (!user) {
-                socket.emit("error", "User not found");
+                // Should be created by getUser if not exists
+                socket.emit("error", "User initialization failed");
                 return;
             }
 
@@ -178,18 +171,6 @@ export function setupSocketHandlers(io: Server) {
             const isRealMoney = table.isRealMoney;
 
             if (isRealMoney) {
-                if (user.is_guest) {
-                    socket.emit("error", "Guests cannot play real money games");
-                    return;
-                }
-
-                // Check if wallet is linked
-                const linkedWallets = await db.getWalletsForAccount(user.id);
-                if (!address || !linkedWallets.includes(address)) {
-                    socket.emit("error", "Wallet not linked to account");
-                    return;
-                }
-
                 // Verify deposit
                 if (!txHash) {
                     socket.emit("error", "Deposit transaction required");
@@ -371,10 +352,9 @@ export function setupSocketHandlers(io: Server) {
                         await db.updateTableSession(player.sessionId, player.chips);
                     }
 
-                    // Auto-payout on disconnect
-                    if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        await processPayout(player.address, player.chips);
-                    }
+                    // REMOVED: Auto-payout on disconnect
+                    // We now require manual "Leave Table" for payout.
+                    // Chips remain at table (or logic can be added to persist them for reconnection)
                     table.removePlayer(socket.id);
 
                     const sockets = await io.in(tableId).fetchSockets();

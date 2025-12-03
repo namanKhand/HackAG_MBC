@@ -43,7 +43,7 @@ export default function TablePage() {
     if (!playerName) return null; // Wait for name to be set
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-slate-900 text-white">
+        <main className="flex min-h-screen flex-col items-center justify-center text-white">
             <PokerTable
                 tableId={tableId}
                 playerName={playerName}
