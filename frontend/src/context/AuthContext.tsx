@@ -1,42 +1,84 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface User {
-    id: string; // Using address as ID
-    username: string; // Using address as username
+    id: number;
+    username: string;
+    email: string;
     isGuest: boolean;
+    wallets?: string[];
 }
 
 interface AuthContextType {
     user: User | null;
-    token: string | null; // Keeping for compatibility but will be null or dummy
+    token: string | null;
     loading: boolean;
+    login: (token: string, user: User) => void;
+    logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { address, isConnected } = useAccount();
     const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
-        if (isConnected && address) {
-            setUser({
-                id: address,
-                username: `${address.slice(0, 6)}...${address.slice(-4)}`,
-                isGuest: false
-            });
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            setToken(storedToken);
+            fetchUser(storedToken);
         } else {
-            setUser(null);
+            setLoading(false);
         }
-        setLoading(false);
-    }, [isConnected, address]);
+    }, []);
+
+    const fetchUser = async (authToken: string) => {
+        try {
+            const res = await fetch('http://localhost:3001/api/auth/me', {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+            } else {
+                logout();
+            }
+        } catch (e) {
+            console.error(e);
+            logout();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const login = (newToken: string, newUser: User) => {
+        localStorage.setItem('token', newToken);
+        setToken(newToken);
+        setUser(newUser);
+        router.push('/');
+    };
+
+    const logout = () => {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+        router.push('/login');
+    };
+
+    const refreshUser = async () => {
+        if (token) {
+            await fetchUser(token);
+        }
+    };
 
     return (
-        <AuthContext.Provider value={{ user, token: null, loading }}>
+        <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
