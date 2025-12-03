@@ -15,7 +15,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { address } = useAccount();
     const { data: usdcBalance } = useBalance({
         address,
@@ -61,7 +61,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                     {!isCollapsed && (
                         <div className="ml-3 overflow-hidden">
                             <p className="text-sm font-medium text-white truncate">{user?.username}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.isGuest ? 'Guest' : user?.email}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.isGuest ? 'Guest' : 'Connected'}</p>
                         </div>
                     )}
                 </div>
@@ -206,13 +206,6 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                     </ConnectButton.Custom>
                 </div>
 
-                <button
-                    onClick={logout}
-                    className={`w-full flex items-center p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-                >
-                    <LogOut size={20} />
-                    {!isCollapsed && <span className="ml-2 font-medium">Logout</span>}
-                </button>
             </div>
         </div>
     );

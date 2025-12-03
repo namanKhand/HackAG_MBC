@@ -25,8 +25,8 @@ export default function Home() {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
 
       <div className="z-10 w-full max-w-6xl flex flex-col items-center">
-        <h1 className="text-7xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-red-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] text-center">
-          Base Poker
+        <h1 className="text-7xl font-bold mb-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] text-center">
+          <span className="text-red-500">Base</span> <span className="text-white">Poker</span>
         </h1>
         <p className="text-xl text-gray-300 mb-16 font-light tracking-widest uppercase">The Future of On-Chain Poker</p>
 
@@ -37,7 +37,7 @@ export default function Home() {
             className="group relative h-96 bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-green-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(34,197,94,0.2)] hover:-translate-y-2 overflow-hidden"
           >
             <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">🎮</div>
+            <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100">🎮</div>
             <h2 className="text-4xl font-bold mb-4 text-white group-hover:text-green-400 transition-colors">Paper Money</h2>
             <p className="text-gray-400 text-center text-lg max-w-xs">Practice your skills risk-free with virtual chips.</p>
             <div className="mt-8 px-8 py-3 bg-white/5 rounded-full border border-white/10 group-hover:bg-green-500/20 group-hover:border-green-500/30 transition-all">

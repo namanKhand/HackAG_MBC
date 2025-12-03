@@ -78,7 +78,6 @@ export default function PokerTable({
     initialTxHash?: string;
 }) {
     const { address } = useAccount();
-    const { token } = useAuth();
     const router = useRouter();
     const { data: balanceData } = useBalance({
         address: address,
@@ -122,8 +121,7 @@ export default function PokerTable({
                         name: playerName,
                         address,
                         buyInAmount: initialBuyIn,
-                        txHash: initialTxHash,
-                        token
+                        txHash: initialTxHash
                     });
                 }, 100);
             }
@@ -167,7 +165,7 @@ export default function PokerTable({
         return () => {
             newSocket.disconnect();
         };
-    }, [tableId, playerName, address, initialBuyIn, initialTxHash, token]);
+    }, [tableId, playerName, address, initialBuyIn, initialTxHash]);
 
     const handleAction = (action: string, amount?: number) => {
         if (socket) {
@@ -182,8 +180,7 @@ export default function PokerTable({
                 tableId,
                 name: playerName,
                 address,
-                buyInAmount: effectiveBuyIn,
-                token
+                buyInAmount: effectiveBuyIn
             });
             setShowBuyInModal(false);
         }
@@ -253,15 +250,28 @@ export default function PokerTable({
                                 Rankings ?
                             </button>
                             {me && (
-                                <button
-                                    onClick={() => {
-                                        if (me.status === 'active') socket?.emit('sit_out', { tableId });
-                                        else socket?.emit('back_in', { tableId });
-                                    }}
-                                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${me.status === 'active' ? 'bg-red-900/50 hover:bg-red-900 text-red-200' : 'bg-green-900/50 hover:bg-green-900 text-green-200'}`}
-                                >
-                                    {me.status === 'active' ? 'Sit Out' : 'I\'m Back'}
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            if (me.status === 'active') socket?.emit('sit_out', { tableId });
+                                            else socket?.emit('back_in', { tableId });
+                                        }}
+                                        className={`px-4 py-2 rounded-lg font-bold transition-colors ${me.status === 'active' ? 'bg-red-900/50 hover:bg-red-900 text-red-200' : 'bg-green-900/50 hover:bg-green-900 text-green-200'}`}
+                                    >
+                                        {me.status === 'active' ? 'Sit Out' : 'I\'m Back'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm("Are you sure you want to leave? Your chips will be paid out to your wallet.")) {
+                                                socket?.emit('leave_table', { tableId });
+                                                router.push('/lobby');
+                                            }
+                                        }}
+                                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg"
+                                    >
+                                        Leave Table
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>

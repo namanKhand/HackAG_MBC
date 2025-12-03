@@ -1,84 +1,42 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
 
 interface User {
-    id: number;
-    username: string;
-    email: string;
+    id: string; // Using address as ID
+    username: string; // Using address as username
     isGuest: boolean;
-    wallets?: string[];
 }
 
 interface AuthContextType {
     user: User | null;
-    token: string | null;
+    token: string | null; // Keeping for compatibility but will be null or dummy
     loading: boolean;
-    login: (token: string, user: User) => void;
-    logout: () => void;
-    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { address, isConnected } = useAccount();
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
-            fetchUser(storedToken);
-        } else {
-            setLoading(false);
-        }
-    }, []);
-
-    const fetchUser = async (authToken: string) => {
-        try {
-            const res = await fetch('http://localhost:3001/api/auth/me', {
-                headers: { Authorization: `Bearer ${authToken}` }
+        if (isConnected && address) {
+            setUser({
+                id: address,
+                username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+                isGuest: false
             });
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data.user);
-            } else {
-                logout();
-            }
-        } catch (e) {
-            console.error(e);
-            logout();
-        } finally {
-            setLoading(false);
+        } else {
+            setUser(null);
         }
-    };
-
-    const login = (newToken: string, newUser: User) => {
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-        setUser(newUser);
-        router.push('/');
-    };
-
-    const logout = () => {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        router.push('/login');
-    };
-
-    const refreshUser = async () => {
-        if (token) {
-            await fetchUser(token);
-        }
-    };
+        setLoading(false);
+    }, [isConnected, address]);
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, token: null, loading }}>
             {children}
         </AuthContext.Provider>
     );

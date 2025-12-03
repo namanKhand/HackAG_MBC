@@ -11,24 +11,8 @@ export class Database {
         });
 
         await this.db.exec(`
-            CREATE TABLE IF NOT EXISTS accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE,
-                email TEXT UNIQUE,
-                password_hash TEXT,
-                is_guest BOOLEAN DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS wallets (
-                address TEXT PRIMARY KEY,
-                account_id INTEGER,
-                FOREIGN KEY(account_id) REFERENCES accounts(id)
-            );
-
             CREATE TABLE IF NOT EXISTS users (
                 address TEXT PRIMARY KEY,
-                account_id INTEGER,
                 hands_played INTEGER DEFAULT 0,
                 hands_won INTEGER DEFAULT 0,
                 chips_won INTEGER DEFAULT 0,
@@ -59,52 +43,6 @@ export class Database {
                 FOREIGN KEY(game_id) REFERENCES game_history(id)
             );
         `);
-    }
-
-    async createAccount(username: string, email: string, passwordHash: string, isGuest: boolean = false): Promise<number> {
-        if (!this.db) throw new Error("DB not initialized");
-        const result = await this.db.run(
-            'INSERT INTO accounts (username, email, password_hash, is_guest) VALUES (?, ?, ?, ?)',
-            username, email, passwordHash, isGuest
-        );
-        return result.lastID!;
-    }
-
-    async getAccountByEmail(email: string): Promise<any> {
-        if (!this.db) throw new Error("DB not initialized");
-        return await this.db.get('SELECT * FROM accounts WHERE email = ?', email);
-    }
-
-    async getAccountByUsername(username: string): Promise<any> {
-        if (!this.db) throw new Error("DB not initialized");
-        return await this.db.get('SELECT * FROM accounts WHERE username = ?', username);
-    }
-
-    async getAccountById(id: number): Promise<any> {
-        if (!this.db) throw new Error("DB not initialized");
-        return await this.db.get('SELECT * FROM accounts WHERE id = ?', id);
-    }
-
-    async linkWallet(accountId: number, address: string) {
-        if (!this.db) throw new Error("DB not initialized");
-        // Check if wallet is already linked
-        const existing = await this.db.get('SELECT * FROM wallets WHERE address = ?', address);
-        if (existing) {
-            if (existing.account_id !== accountId) {
-                throw new Error("Wallet already linked to another account");
-            }
-            return; // Already linked to this account
-        }
-        await this.db.run('INSERT INTO wallets (address, account_id) VALUES (?, ?)', address, accountId);
-
-        // Also update users table to link stats to this account if user entry exists
-        await this.db.run('UPDATE users SET account_id = ? WHERE address = ?', accountId, address);
-    }
-
-    async getWalletsForAccount(accountId: number): Promise<string[]> {
-        if (!this.db) throw new Error("DB not initialized");
-        const rows = await this.db.all('SELECT address FROM wallets WHERE account_id = ?', accountId);
-        return rows.map(r => r.address);
     }
 
     async getUser(address: string): Promise<any> {
@@ -172,43 +110,7 @@ export class Database {
 
     async getGameHistory(address: string) {
         if (!this.db) throw new Error("DB not initialized");
-        // For now, just return all history where the user was the winner, 
-        // or we could add a many-to-many table for players in a game.
-        // Simplified: Return history where user won.
         return await this.db.all('SELECT * FROM player_game_history WHERE address = ? ORDER BY timestamp DESC LIMIT 50', address);
-    }
-    async getAccountStats(accountId: number) {
-        if (!this.db) throw new Error("DB not initialized");
-        // Aggregate stats from all wallets linked to this account
-        // Also include stats from users table where account_id matches
-        const stats = await this.db.get(`
-            SELECT 
-                SUM(hands_played) as hands_played,
-                SUM(hands_won) as hands_won,
-                SUM(chips_won) as chips_won,
-                SUM(pfr_count) as pfr_count,
-                SUM(pfr_opportunity) as pfr_opportunity,
-                SUM(vpip_count) as vpip_count,
-                SUM(vpip_opportunity) as vpip_opportunity,
-                SUM(three_bet_count) as three_bet_count,
-                SUM(three_bet_opportunity) as three_bet_opportunity
-            FROM users 
-            WHERE account_id = ?
-        `, accountId);
-        return stats;
-    }
-
-    async getAccountHistory(accountId: number) {
-        if (!this.db) throw new Error("DB not initialized");
-        // Get history for all wallets linked to this account
-        return await this.db.all(`
-            SELECT h.* 
-            FROM player_game_history h
-            JOIN users u ON h.address = u.address
-            WHERE u.account_id = ?
-            ORDER BY h.timestamp DESC 
-            LIMIT 50
-        `, accountId);
     }
 }
 
