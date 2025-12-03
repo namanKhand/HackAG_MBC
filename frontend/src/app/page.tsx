@@ -30,25 +30,11 @@ export default function Home() {
         </h1>
         <p className="text-xl text-gray-300 mb-16 font-light tracking-widest uppercase">The Future of On-Chain Poker</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full px-4">
-          {/* Paper Money Option (Left) */}
-          <button
-            onClick={() => handleModeSelect('paper')}
-            className="group relative h-96 bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-green-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(34,197,94,0.2)] hover:-translate-y-2 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100">🎮</div>
-            <h2 className="text-4xl font-bold mb-4 text-white group-hover:text-green-400 transition-colors">Paper Money</h2>
-            <p className="text-gray-400 text-center text-lg max-w-xs">Practice your skills risk-free with virtual chips.</p>
-            <div className="mt-8 px-8 py-3 bg-white/5 rounded-full border border-white/10 group-hover:bg-green-500/20 group-hover:border-green-500/30 transition-all">
-              <span className="text-sm font-mono text-green-300">Free Play</span>
-            </div>
-          </button>
-
-          {/* Real Money Option (Right) */}
+        <div className="flex justify-center w-full px-4">
+          {/* Real Money Option (Centered) */}
           <button
             onClick={() => handleModeSelect('real')}
-            className="group relative h-96 bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] hover:-translate-y-2 overflow-hidden"
+            className="group relative h-96 w-full max-w-2xl bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] hover:-translate-y-2 overflow-hidden"
           >
             <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">💰</div>

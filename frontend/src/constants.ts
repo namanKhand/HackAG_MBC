@@ -6,6 +6,4 @@ export const TABLES = [
     { id: 'low', name: 'Low Stakes', stakes: '1/2 USDC', minBuyIn: 100, maxBuyIn: 200, isRealMoney: true },
     { id: 'mid', name: 'Mid Stakes', stakes: '5/10 USDC', minBuyIn: 500, maxBuyIn: 1000, isRealMoney: true },
     { id: 'high', name: 'High Stakes', stakes: '50/100 USDC', minBuyIn: 5000, maxBuyIn: 10000, isRealMoney: true },
-    { id: 'play_micro', name: 'Play Money Micro', stakes: '1/2 Chips', minBuyIn: 100, maxBuyIn: 1000, isRealMoney: false },
-    { id: 'play_high', name: 'Play Money High', stakes: '50/100 Chips', minBuyIn: 5000, maxBuyIn: 10000, isRealMoney: false },
 ];

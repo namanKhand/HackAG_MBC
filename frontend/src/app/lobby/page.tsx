@@ -11,8 +11,7 @@ import { TABLES } from '@/constants';
 function LobbyContent() {
     const router = useRouter();
     const { isConnected, address } = useAccount();
-    const searchParams = useSearchParams();
-    const mode = searchParams.get('mode') || 'real';
+    // Removed searchParams as mode is always real
 
     const [selectedTable, setSelectedTable] = useState<typeof TABLES[0] | null>(null);
     const [isBuyInOpen, setIsBuyInOpen] = useState(false);
@@ -21,27 +20,22 @@ function LobbyContent() {
     const [customTableId, setCustomTableId] = useState('');
 
     const handleJoinClick = (table: typeof TABLES[0]) => {
-        if (mode === 'real') {
-            if (!isConnected) {
-                alert('Please connect wallet first');
-                return;
-            }
-            setSelectedTable(table);
-            setIsBuyInOpen(true);
-        } else {
-            // Paper money - just join
-            router.push(`/table/${table.id}?mode=paper`);
+        if (!isConnected) {
+            alert('Please connect wallet first');
+            return;
         }
+        setSelectedTable(table);
+        setIsBuyInOpen(true);
     };
 
     const handleCreatePrivate = () => {
         const tableId = `private-${Math.random().toString(36).substr(2, 9)}`;
-        router.push(`/table/${tableId}?mode=${mode}&action=create`);
+        router.push(`/table/${tableId}?mode=real&action=create`);
     };
 
     const handleJoinPrivate = () => {
         if (customTableId) {
-            router.push(`/table/${customTableId}?mode=${mode}`);
+            router.push(`/table/${customTableId}?mode=real`);
         }
     };
 
@@ -86,7 +80,7 @@ function LobbyContent() {
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {TABLES.filter(t => (mode === 'real' ? t.isRealMoney : !t.isRealMoney)).map((table) => (
+                    {TABLES.filter(t => t.isRealMoney).map((table) => (
                         <div
                             key={table.id}
                             className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 hover:border-blue-500/50 transition-all hover:-translate-y-1 hover:shadow-xl group"

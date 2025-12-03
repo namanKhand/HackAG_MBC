@@ -14,8 +14,6 @@ const PUBLIC_TABLES = [
     { id: 'low', name: 'Low Stakes', smallBlind: 1, bigBlind: 2, isRealMoney: true },
     { id: 'mid', name: 'Mid Stakes', smallBlind: 5, bigBlind: 10, isRealMoney: true },
     { id: 'high', name: 'High Stakes', smallBlind: 50, bigBlind: 100, isRealMoney: true },
-    { id: 'play_micro', name: 'Play Money Micro', smallBlind: 1, bigBlind: 2, isRealMoney: false },
-    { id: 'play_high', name: 'Play Money High', smallBlind: 50, bigBlind: 100, isRealMoney: false },
 ];
 
 PUBLIC_TABLES.forEach(config => {
