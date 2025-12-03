@@ -9,7 +9,7 @@ import { ReactNode, useState } from 'react';
 
 const config = getDefaultConfig({
     appName: 'Base Poker',
-    projectId: 'YOUR_PROJECT_ID',
+    projectId: '7b97a0db94bb11395dfef82be865674a',
     chains: [base],
     ssr: true,
 });
