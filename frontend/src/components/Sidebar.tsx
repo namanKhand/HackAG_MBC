@@ -29,7 +29,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 
     return (
         <div
-            className={`fixed left-0 top-0 h-screen bg-zinc-950 border-r border-white/5 transition-all duration-300 z-50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
+            className={`fixed left-0 top-0 h-screen bg-black/30 backdrop-blur-md border-r border-white/10 transition-all duration-300 z-50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
                 }`}
         >
             {/* Toggle Button */}
@@ -99,7 +99,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
             </nav>
 
             {/* Wallet Connection & Logout */}
-            <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-4">
+            <div className="p-4 border-t border-white/10 bg-transparent space-y-4">
                 <div className={`transition-all duration-300 ${isCollapsed ? 'scale-75 origin-center -ml-1' : ''}`}>
                     <ConnectButton.Custom>
                         {({

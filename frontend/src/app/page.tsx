@@ -20,9 +20,8 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-[url('/background.png')] bg-cover bg-center bg-no-repeat text-white relative overflow-hidden">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Overlay - Removed specific background */}
 
       <div className="z-10 w-full max-w-6xl flex flex-col items-center">
         <h1 className="text-7xl font-bold mb-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] text-center">
@@ -34,7 +33,7 @@ export default function Home() {
           {/* Real Money Option (Centered) */}
           <button
             onClick={() => handleModeSelect('real')}
-            className="group relative h-96 w-full max-w-2xl bg-gradient-to-br from-gray-900 to-black rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] hover:-translate-y-2 overflow-hidden"
+            className="group relative h-96 w-full max-w-2xl bg-black/30 backdrop-blur-sm rounded-[2.5rem] border border-white/10 p-8 flex flex-col items-center justify-center hover:border-red-500/50 transition-all duration-500 hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] hover:-translate-y-2 overflow-hidden"
           >
             <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="text-8xl mb-8 group-hover:scale-110 transition-transform duration-300 drop-shadow-2xl">💰</div>
@@ -46,32 +45,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Wallet Status / Connect (Optional Footer) */}
-        <div className="mt-16">
-          {!isConnected ? (
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-gray-500 text-sm">Connect wallet for Real Money play</p>
-              <div className="flex gap-3">
-                {connectors.map((connector) => (
-                  <button
-                    key={connector.uid}
-                    onClick={() => connect({ connector })}
-                    className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold transition-all"
-                  >
-                    {connector.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => disconnect()}
-              className="px-6 py-2 text-gray-500 hover:text-white transition-colors text-sm"
-            >
-              Connected: {address?.slice(0, 6)}...{address?.slice(-4)} (Disconnect)
-            </button>
-          )}
-        </div>
+        {/* Wallet Status / Connect (Optional Footer) - Removed per user request */}
       </div>
     </main>
   );

@@ -15,7 +15,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     // and the home page is accessible to everyone.
 
     return (
-        <div className="flex min-h-screen bg-black">
+        <div className="flex min-h-screen bg-[url('/cyberpunk-city-bg.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white relative overflow-hidden">
+            {/* Dark Overlay for readability */}
+            <div className="absolute inset-0 bg-black/40 pointer-events-none"></div>
             <Sidebar isCollapsed={isCollapsed} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
             <main
                 className={`flex-1 transition-all duration-300 ease-in-out p-6 ${isCollapsed ? 'ml-20' : 'ml-64'
