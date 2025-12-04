@@ -39,20 +39,36 @@ export class BlockchainListener {
     startListening() {
         console.log(`Listening for deposits on Vault ${MIDDLEMAN_VAULT_ADDRESS}...`);
 
-        this.vaultContract.on("Deposited", async (user, amount, event) => {
-            const txHash = event.log.transactionHash;
+        // Poll for events every 5 seconds instead of using .on() to avoid "filter not found" errors
+        setInterval(async () => {
+            try {
+                const currentBlock = await this.provider.getBlockNumber();
+                // Look back 100 blocks to be safe, or track last checked block
+                const fromBlock = currentBlock - 100;
 
-            if (this.processedTxHashes.has(txHash)) return;
-            this.processedTxHashes.add(txHash);
+                const events = await this.vaultContract.queryFilter("Deposited", fromBlock, currentBlock);
 
-            console.log(`Deposit detected! User: ${user}, Amount: ${ethers.formatUnits(amount, 6)} USDC, Tx: ${txHash}`);
+                for (const event of events) {
+                    if (event instanceof ethers.EventLog) {
+                        const txHash = event.transactionHash;
+                        if (this.processedTxHashes.has(txHash)) continue;
 
-            // Notify frontend via socket
-            this.io.emit("deposit_confirmed", {
-                address: user,
-                amount: Number(ethers.formatUnits(amount, 6)),
-                txHash: txHash
-            });
-        });
+                        this.processedTxHashes.add(txHash);
+                        const user = event.args[0];
+                        const amount = event.args[1];
+
+                        console.log(`Deposit detected! User: ${user}, Amount: ${ethers.formatUnits(amount, 6)} USDC, Tx: ${txHash}`);
+
+                        this.io.emit("deposit_confirmed", {
+                            address: user,
+                            amount: Number(ethers.formatUnits(amount, 6)),
+                            txHash: txHash
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Error polling for deposits:", e);
+            }
+        }, 5000);
     }
 }

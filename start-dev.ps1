@@ -1,6 +1,18 @@
 $env:Path = "C:\Program Files\nodejs;" + $env:Path
 Write-Host "Starting Base Poker DApp (Full Stack)..."
 
+# 0. Cleanup Ports
+Write-Host "Cleaning up ports (8545, 3001, 3000)..."
+Get-NetTCPConnection -LocalPort 8545, 3001, 3000 -ErrorAction SilentlyContinue | ForEach-Object {
+    try {
+        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+        Write-Host "Killed process on port $($_.LocalPort)"
+    } catch {
+        Write-Host "Failed to kill process on port $($_.LocalPort)"
+    }
+}
+Start-Sleep -Seconds 2
+
 # 1. Start Hardhat Node
 Write-Host "Starting Hardhat Node..."
 $nodeProcess = Start-Process -FilePath "npx.cmd" -ArgumentList "hardhat node" -WorkingDirectory "contracts" -PassThru -NoNewWindow

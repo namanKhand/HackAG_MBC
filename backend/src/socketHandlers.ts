@@ -22,10 +22,9 @@ PUBLIC_TABLES.forEach(config => {
         name: config.name,
         smallBlind: config.smallBlind,
         bigBlind: config.bigBlind,
-        isPublic: true
+        isPublic: true,
+        isRealMoney: config.isRealMoney
     });
-    // @ts-ignore - attaching extra prop for now
-    tables[config.id].isRealMoney = config.isRealMoney;
     console.log(`Initialized public table: ${config.name} (${config.id}) - RealMoney: ${config.isRealMoney}`);
 });
 
@@ -116,7 +115,7 @@ async function processPayout(address: string, amount: number) {
 
         // Amount is in chips (assumed 1 chip = 1 USDC for now, or scaled)
         // If chips are 1:1 with USDC (6 decimals)
-        const payoutAmount = ethers.parseUnits(amount.toString(), 6);
+        const payoutAmount = ethers.parseUnits(amount.toFixed(6), 6);
 
         console.log(`Processing payout of ${amount} USDC to ${address} via Vault...`);
         const tx = await vault.payout(address, payoutAmount);
@@ -186,7 +185,7 @@ export function setupSocketHandlers(io: Server) {
                 address,
                 accountId: user.id, // Store account ID for stats
                 sessionId, // Store session ID
-                name: user.username, // Use account username
+                name: user.username || address.slice(0, 6), // Use account username or fallback
                 chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
                 totalBuyIn: buyInAmount || 1000, // Initialize total buy-in
@@ -228,15 +227,18 @@ export function setupSocketHandlers(io: Server) {
             }
 
             if (table.addPlayer(player)) {
+                console.log(`[JoinTable] Added player ${player.name} to table ${tableId}`);
                 socket.join(tableId);
 
                 // Emit state to everyone (masked)
                 const sockets = await io.in(tableId).fetchSockets();
+                console.log(`[JoinTable] Broadcasting state to ${sockets.length} sockets`);
                 for (const s of sockets) {
                     s.emit("table_state", table.getForPlayer(s.id));
                 }
                 console.log(`${player.name} joined table ${tableId}`);
             } else {
+                console.error(`[JoinTable] Failed to add player - Table full?`);
                 socket.emit("error", "Table full");
             }
         });
@@ -325,9 +327,15 @@ export function setupSocketHandlers(io: Server) {
                         await db.updateTableSession(player.sessionId, player.chips);
                     }
 
+                    console.log(`[LeaveTable] Player ${player.name} (${socket.id}) leaving table ${tableId}`);
+                    console.log(`[LeaveTable] Chips: ${player.chips}, Address: ${player.address}, RealMoney: ${table.config.isRealMoney}`);
+
                     if (player.chips > 0 && player.address && table.config.isRealMoney) {
+                        console.log(`[LeaveTable] Triggering payout for ${player.chips} chips to ${player.address}`);
                         await processPayout(player.address, player.chips);
                         player.chips = 0; // Reset chips after payout
+                    } else {
+                        console.log(`[LeaveTable] Payout skipped. Conditions met? Chips>0: ${player.chips > 0}, Address: ${!!player.address}, RealMoney: ${table.config.isRealMoney}`);
                     }
                 }
                 table.removePlayer(socket.id);
@@ -352,9 +360,13 @@ export function setupSocketHandlers(io: Server) {
                         await db.updateTableSession(player.sessionId, player.chips);
                     }
 
-                    // REMOVED: Auto-payout on disconnect
-                    // We now require manual "Leave Table" for payout.
-                    // Chips remain at table (or logic can be added to persist them for reconnection)
+                    // Auto-payout on disconnect
+                    if (player.chips > 0 && player.address && table.config.isRealMoney) {
+                        console.log(`[Disconnect] Triggering payout for ${player.chips} chips to ${player.address}`);
+                        await processPayout(player.address, player.chips);
+                        player.chips = 0; // Reset chips after payout
+                    }
+
                     table.removePlayer(socket.id);
 
                     const sockets = await io.in(tableId).fetchSockets();
