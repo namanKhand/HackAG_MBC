@@ -128,8 +128,11 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
     useEffect(() => {
         if (isDepositSuccess && depositHash && processedHash.current !== depositHash) {
             processedHash.current = depositHash;
-            setStep('verifying');
-            verifyDeposit(depositHash);
+            // Use setTimeout to avoid synchronous state update warning (cascading render)
+            setTimeout(() => {
+                setStep('verifying');
+                verifyDeposit(depositHash);
+            }, 0);
         }
     }, [isDepositSuccess, depositHash, verifyDeposit]);
 
