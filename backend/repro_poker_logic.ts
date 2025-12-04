@@ -125,6 +125,41 @@ async function testSidePotLogic() {
     } else {
         console.error('FAIL: Side pot distribution error');
     }
+
+    console.log('\n--- Testing Early Win (Fold) Logic ---');
+    const table2 = new Table('test_fold');
+    const fp1 = { id: 'fp1', name: 'Winner', chips: 100, startHandChips: 100, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active', stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }, handContribution: 0, totalBuyIn: 100 };
+    const fp2 = { id: 'fp2', name: 'Folder', chips: 100, startHandChips: 100, bet: 0, folded: false, cards: [], seat: 1, isTurn: false, hasActed: false, status: 'active', stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }, handContribution: 0, totalBuyIn: 100 };
+
+    table2.addPlayer(fp1 as any);
+    table2.addPlayer(fp2 as any);
+    table2.startGame();
+
+    // FP1 bets 10
+    table2.handleAction('fp1', 'raise', 10);
+    // FP2 folds
+    table2.handleAction('fp2', 'fold');
+
+    console.log(`FP1 Chips (Expected 110.03? No, 100 + blinds + bet):`);
+    // Blinds: SB=0.01, BB=0.02 (default micro?) No, default is 10/20 in Table class but 0.01/0.02 in socketHandlers.
+    // Table default is 10/20.
+    // Start: 100 chips.
+    // SB (FP2): 10. BB (FP1): 20.
+    // FP2 acts first preflop? No, 2 players -> Dealer is SB.
+    // Heads up: Dealer is SB. Dealer acts first preflop.
+    // So FP2 is SB/Dealer. FP1 is BB.
+    // FP2 acts first. FP2 folds.
+    // FP1 wins immediately.
+    // Pot: 10 (SB) + 20 (BB) = 30.
+    // FP1 gets 30.
+    // FP1 start: 100. Paid 20. Chips: 80. Wins 30. End: 110.
+
+    console.log(`FP1 Chips: ${fp1.chips}`);
+    if (fp1.chips === 110) {
+        console.log('PASS: Early win logic works');
+    } else {
+        console.log('FAIL: Early win logic failed');
+    }
 }
 
 async function main() {

@@ -82,10 +82,16 @@ export class Table {
         this.ledger = {};
     }
 
+    // Helper for 3-decimal rounding
+    floor3(num: number): number {
+        return Math.floor(num * 1000) / 1000;
+    }
+
     addPlayer(player: Player): boolean {
         const seat = this.players.findIndex(p => p === null);
         if (seat === -1) return false;
         player.seat = seat;
+        player.chips = this.floor3(player.chips); // Round chips
         this.players[seat] = player;
         return true;
     }
@@ -169,7 +175,7 @@ export class Table {
         // SB
         const sbPlayer = this.players[sbIndex]!;
         const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
-        sbPlayer.chips -= sbAmount;
+        sbPlayer.chips = this.floor3(sbPlayer.chips - sbAmount);
         sbPlayer.bet = sbAmount;
         sbPlayer.handContribution += sbAmount;
         this.pot += sbAmount;
@@ -177,7 +183,7 @@ export class Table {
         // BB
         const bbPlayer = this.players[bbIndex]!;
         const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
-        bbPlayer.chips -= bbAmount;
+        bbPlayer.chips = this.floor3(bbPlayer.chips - bbAmount);
         bbPlayer.bet = bbAmount;
         bbPlayer.handContribution += bbAmount;
         this.pot += bbAmount;
@@ -192,6 +198,13 @@ export class Table {
     }
 
     advanceTurn() {
+        // Check for Early Win (everyone else folded)
+        const activePlayers = this.players.filter(p => p && !p.folded);
+        if (activePlayers.length === 1) {
+            this.endGameEarly(activePlayers[0]!);
+            return;
+        }
+
         // Check if round is complete
         if (this.isRoundComplete()) {
             this.nextStreet();
@@ -237,7 +250,7 @@ export class Table {
             let contribution = 0;
             if (player.chips >= toCall) {
                 contribution = toCall;
-                player.chips -= toCall;
+                player.chips = this.floor3(player.chips - toCall);
                 player.bet += toCall;
             } else {
                 // All-in call
@@ -263,7 +276,7 @@ export class Table {
             } else if (player.chips >= diff) {
                 // Normal raise or exact all-in
                 contribution = diff;
-                player.chips -= diff;
+                player.chips = this.floor3(player.chips - diff);
                 player.bet = totalBet;
                 if (totalBet > this.currentBet) {
                     this.currentBet = totalBet;
@@ -273,7 +286,7 @@ export class Table {
                     });
                 }
             } else {
-                // All-in Raise (Partial) - Should be caught by dust check above usually, but fallback
+                // All-in Raise (Partial)
                 contribution = player.chips;
                 player.bet += player.chips;
                 player.chips = 0;
@@ -359,6 +372,46 @@ export class Table {
         if (this.players[next]) this.players[next]!.isTurn = true;
     }
 
+    endGameEarly(winner: Player) {
+        console.log(`[Table ${this.id}] Early Win for ${winner.name}. Pot: ${this.pot}`);
+
+        // Give entire pot to winner
+        const winAmount = this.floor3(this.pot);
+        winner.chips = this.floor3(winner.chips + winAmount);
+        this.ledger[winner.id] = (this.ledger[winner.id] || 0) + winAmount;
+
+        this.winners = [winner.id];
+
+        // Persist Stats
+        if (winner.address) {
+            db.updateUserStats(winner.address, { hands_won: 1, chips_won: winAmount });
+        }
+
+        // Game History
+        if (winner.address) {
+            db.addGameHistory({
+                table_id: this.id,
+                winner_address: winner.address,
+                pot_size: this.pot,
+                hand_description: "Winner (Fold)"
+            }).then(gameId => {
+                this.players.forEach(p => {
+                    if (p && p.address && !p.status.includes('sitting_out')) {
+                        const netProfit = p.chips - p.startHandChips;
+                        db.addPlayerGameHistory({
+                            game_id: gameId,
+                            address: p.address,
+                            net_profit: netProfit,
+                            hand_description: p.folded ? "Folded" : "Winner"
+                        });
+                    }
+                });
+            });
+        }
+
+        this.gameActive = false;
+    }
+
     evaluateWinner() {
         // 1. Identify active players (not folded)
         const activePlayers = this.players.filter(p => p && !p.folded);
@@ -432,8 +485,8 @@ export class Table {
                     // ... give remainder to first player.
 
                     // Let's stick to simple floor for now to avoid creating chips
-                    const winAmount = Math.floor(share);
-                    w.player.chips += winAmount;
+                    const winAmount = this.floor3(share);
+                    w.player.chips = this.floor3(w.player.chips + winAmount);
                     this.ledger[w.player.id] = (this.ledger[w.player.id] || 0) + winAmount;
 
                     console.log(`[Table ${this.id}] Pot Distribution: ${w.player.name} wins ${winAmount} chips from level ${level}`);
@@ -551,7 +604,7 @@ export class Table {
     addChips(playerId: string, amount: number) {
         const player = this.players.find(p => p?.id === playerId);
         if (player) {
-            player.chips += amount;
+            player.chips = this.floor3(player.chips + amount);
             this.ledger[playerId] = (this.ledger[playerId] || 0) + amount;
         }
     }
