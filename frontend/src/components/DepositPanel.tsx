@@ -124,11 +124,11 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
 
     // Handle Deposit Success
     useEffect(() => {
-        if (isDepositSuccess && depositHash) {
+        if (isDepositSuccess && depositHash && step !== 'verifying') {
             setStep('verifying');
             verifyDeposit(depositHash);
         }
-    }, [isDepositSuccess, depositHash, verifyDeposit]);
+    }, [isDepositSuccess, depositHash, verifyDeposit, step]);
 
 
 

@@ -12,7 +12,7 @@ export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className }) => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    const fetchBalance = async () => {
+    const fetchBalance = React.useCallback(async () => {
         if (!address) return;
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`);
@@ -23,13 +23,13 @@ export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className }) => {
         } catch (err) {
             console.error("Failed to fetch balance", err);
         }
-    };
+    }, [address]);
 
     useEffect(() => {
         fetchBalance();
         const interval = setInterval(fetchBalance, 10000); // Poll every 10s
         return () => clearInterval(interval);
-    }, [address]);
+    }, [address, fetchBalance]);
 
     const handleCashout = async () => {
         if (!address || !amount) return;
@@ -101,8 +101,8 @@ export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className }) => {
                     onClick={handleCashout}
                     disabled={loading || !amount || parseFloat(amount) <= 0}
                     className={`w-full py-2 rounded font-bold transition-colors ${loading || !amount || parseFloat(amount) <= 0
-                            ? 'bg-gray-600 cursor-not-allowed text-gray-400'
-                            : 'bg-green-600 hover:bg-green-500 text-white'
+                        ? 'bg-gray-600 cursor-not-allowed text-gray-400'
+                        : 'bg-green-600 hover:bg-green-500 text-white'
                         }`}
                 >
                     {loading ? 'Processing...' : 'Cashout to Wallet'}
