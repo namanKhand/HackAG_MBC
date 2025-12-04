@@ -48,6 +48,7 @@ export class Table {
     communityCards: Card[];
     pot: number;
     currentBet: number;
+    minRaise: number;
     dealerIndex: number;
     turnIndex: number;
     gameActive: boolean;
@@ -78,7 +79,9 @@ export class Table {
         this.deck = new Deck();
         this.communityCards = [];
         this.pot = 0;
+        this.pot = 0;
         this.currentBet = 0;
+        this.minRaise = 0;
         this.dealerIndex = 0;
         this.turnIndex = 0;
         this.gameActive = false;
@@ -149,7 +152,9 @@ export class Table {
         this.deck.shuffle();
         this.communityCards = [];
         this.pot = 0;
+        this.pot = 0;
         this.currentBet = 0;
+        this.minRaise = this.bigBlind;
         this.stage = 'preflop';
         this.winners = [];
 
@@ -208,7 +213,9 @@ export class Table {
         bbPlayer.bet = bbAmount;
         bbPlayer.handContribution += bbAmount;
         this.pot += bbAmount;
+        this.pot += bbAmount;
         this.currentBet = this.bigBlind;
+        this.minRaise = this.bigBlind;
 
         // Set turn to UTG (player after BB)
         this.turnIndex = this.nextActivePlayer(bbIndex);
@@ -298,7 +305,12 @@ export class Table {
                 contribution = diff;
                 player.chips = this.floor3(player.chips - diff);
                 player.bet = totalBet;
+                player.bet = totalBet;
                 if (totalBet > this.currentBet) {
+                    const raiseAmount = totalBet - this.currentBet;
+                    if (raiseAmount > this.minRaise) {
+                        this.minRaise = raiseAmount;
+                    }
                     this.currentBet = totalBet;
                     // Reset hasActed for everyone else
                     this.players.forEach(p => {
@@ -311,6 +323,10 @@ export class Table {
                 player.bet += player.chips;
                 player.chips = 0;
                 if (player.bet > this.currentBet) {
+                    const raiseAmount = player.bet - this.currentBet;
+                    if (raiseAmount > this.minRaise) {
+                        this.minRaise = raiseAmount;
+                    }
                     this.currentBet = player.bet;
                     this.players.forEach(p => {
                         if (p && p.id !== playerId) p.hasActed = false;
@@ -355,6 +371,7 @@ export class Table {
 
     nextStreet() {
         this.currentBet = 0;
+        this.minRaise = this.bigBlind;
         this.players.forEach(p => {
             if (p) {
                 p.bet = 0;

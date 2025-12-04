@@ -38,7 +38,10 @@ interface TableState {
     gameActive: boolean;
     stage: string;
     winners?: string[];
+    stage: string;
+    winners?: string[];
     handDescription?: string;
+    minRaise?: number;
 }
 
 const CardUI = ({ card }: { card: Card | null }) => {
@@ -172,8 +175,9 @@ export default function PokerTable({
             // Update raise amount default when turn starts
             const me = state.players.find(p => p?.id === newSocket.id);
             if (me?.isTurn) {
-                const minRaise = state.currentBet + 20; // Simplified min raise
-                setRaiseAmount(Math.min(minRaise, me.chips + me.bet));
+                const minRaise = state.minRaise || (state.currentBet > 0 ? state.currentBet : 20); // Fallback
+                const minTotalBet = state.currentBet + minRaise;
+                setRaiseAmount(Math.min(minTotalBet, me.chips + me.bet));
 
                 // Handle Pre-Actions using REF to avoid stale closure
                 const currentPreAction = preActionRef.current;
@@ -530,8 +534,9 @@ export default function PokerTable({
                                                 <div className="flex flex-col gap-1 items-center bg-black/40 p-1 rounded-xl border border-white/5">
                                                     <input
                                                         type="range"
-                                                        min={Math.min(table.currentBet + 20, me.chips + me.bet)}
+                                                        min={Math.min((table.currentBet + (table.minRaise || 20)), me.chips + me.bet)}
                                                         max={me.chips + me.bet}
+                                                        step={minBuyIn < 1 ? "0.01" : "1"}
                                                         value={raiseAmount}
                                                         onChange={(e) => setRaiseAmount(Number(e.target.value))}
                                                         className="w-24 accent-green-500 h-1"
