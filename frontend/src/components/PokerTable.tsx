@@ -99,6 +99,8 @@ export default function PokerTable({
     const [preAction, setPreAction] = useState<'none' | 'checkFold' | 'callAny'>('none');
     const preActionRef = useRef<'none' | 'checkFold' | 'callAny'>('none');
 
+    const me = table?.players.find(p => p?.id === socket?.id);
+
     // Sync ref with state
     useEffect(() => {
         preActionRef.current = preAction;
@@ -108,6 +110,8 @@ export default function PokerTable({
 
     // Fetch Chips Balance
     // Fetch Chips Balance
+    // Fetch Chips Balance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const fetchBalance = () => {
         if (address) {
             fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
@@ -239,7 +243,7 @@ export default function PokerTable({
         }
     };
 
-    const me = table?.players.find(p => p?.id === socket?.id);
+
 
     // DEBUG LOGGING
     useEffect(() => {
