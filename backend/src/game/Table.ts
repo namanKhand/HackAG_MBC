@@ -16,6 +16,8 @@ export interface Player {
     isTurn: boolean;
     hasActed: boolean;
     status: 'active' | 'sitting_out';
+    handContribution: number;
+    totalBuyIn: number;
     // Stats for current hand
     stats: {
         pfr: boolean;
@@ -140,6 +142,7 @@ export class Table {
                 p.cards = [this.deck.deal()!, this.deck.deal()!];
                 p.folded = false;
                 p.bet = 0;
+                p.handContribution = 0;
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
@@ -152,6 +155,7 @@ export class Table {
                 p.cards = [];
                 p.folded = true;
                 p.bet = 0;
+                p.handContribution = 0;
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
@@ -167,6 +171,7 @@ export class Table {
         const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
         sbPlayer.chips -= sbAmount;
         sbPlayer.bet = sbAmount;
+        sbPlayer.handContribution += sbAmount;
         this.pot += sbAmount;
 
         // BB
@@ -174,6 +179,7 @@ export class Table {
         const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
         bbPlayer.chips -= bbAmount;
         bbPlayer.bet = bbAmount;
+        bbPlayer.handContribution += bbAmount;
         this.pot += bbAmount;
         this.currentBet = this.bigBlind;
 
@@ -228,35 +234,69 @@ export class Table {
             player.hasActed = true;
         } else if (action === 'call') {
             const toCall = this.currentBet - player.bet;
+            let contribution = 0;
             if (player.chips >= toCall) {
+                contribution = toCall;
                 player.chips -= toCall;
                 player.bet += toCall;
-                this.pot += toCall;
             } else {
                 // All-in call
+                contribution = player.chips;
                 player.bet += player.chips;
-                this.pot += player.chips;
                 player.chips = 0;
             }
+            player.handContribution += contribution;
+            this.pot += contribution;
             player.hasActed = true;
         } else if (action === 'raise' && amount) {
             const totalBet = amount;
             const diff = totalBet - player.bet;
-            if (player.chips >= diff && totalBet > this.currentBet) {
+            let contribution = 0;
+
+            // Check for "effective" all-in (within dust threshold)
+            const maxFunds = player.chips + player.bet;
+            if (Math.abs(totalBet - maxFunds) < 0.0001) {
+                // Treat as exact all-in
+                contribution = player.chips;
+                player.bet += player.chips;
+                player.chips = 0;
+            } else if (player.chips >= diff) {
+                // Normal raise or exact all-in
+                contribution = diff;
                 player.chips -= diff;
                 player.bet = totalBet;
-                this.pot += diff;
-                this.currentBet = totalBet;
+                if (totalBet > this.currentBet) {
+                    this.currentBet = totalBet;
+                    // Reset hasActed for everyone else
+                    this.players.forEach(p => {
+                        if (p && p.id !== playerId) p.hasActed = false;
+                    });
+                }
+            } else {
+                // All-in Raise (Partial) - Should be caught by dust check above usually, but fallback
+                contribution = player.chips;
+                player.bet += player.chips;
+                player.chips = 0;
 
-                // Reset hasActed for everyone else because the bet increased!
-                this.players.forEach(p => {
-                    if (p && p.id !== playerId) p.hasActed = false;
-                });
+                if (player.bet > this.currentBet) {
+                    this.currentBet = player.bet;
+                    this.players.forEach(p => {
+                        if (p && p.id !== playerId) p.hasActed = false;
+                    });
+                }
             }
+            player.handContribution += contribution;
+            this.pot += contribution;
             player.hasActed = true;
         } else if (action === 'check') {
             if (player.bet < this.currentBet) return false;
             player.hasActed = true;
+        }
+
+        // Fix floating point dust (Double check)
+        if (player.chips > 0 && player.chips < 0.0001) {
+            console.log(`[Table ${this.id}] Cleaning up dust for ${player.name}: ${player.chips} -> 0`);
+            player.chips = 0;
         }
 
         if (action === 'call') {
@@ -265,7 +305,6 @@ export class Table {
             player.stats.vpip = true;
             if (this.stage === 'preflop') {
                 player.stats.pfr = true;
-                // Simple 3-bet detection: if current bet > big blind, it's a 3-bet (or 4-bet etc)
                 if (this.currentBet > this.bigBlind) {
                     player.stats.threeBet = true;
                 }
@@ -321,10 +360,12 @@ export class Table {
     }
 
     evaluateWinner() {
+        // 1. Identify active players (not folded)
         const activePlayers = this.players.filter(p => p && !p.folded);
         if (activePlayers.length === 0) return;
 
-        const hands = activePlayers.map(p => {
+        // 2. Calculate Hand Strength for all active players
+        const playerHands = activePlayers.map(p => {
             const cards = [...p!.cards, ...this.communityCards].map(c => c.toString());
             const hand = Hand.solve(cards);
             // @ts-ignore
@@ -332,23 +373,104 @@ export class Table {
             return hand;
         });
 
-        const winners = Hand.winners(hands);
-
-        this.winners = winners.map((w: any) => w.player.id);
-
-        const share = Math.floor(this.pot / winners.length);
-        winners.forEach((w: any) => {
-            // @ts-ignore
-            w.player.chips += share;
-
-            // Persist Winner Stats
-            if (w.player.address) {
-                db.updateUserStats(w.player.address, {
-                    hands_won: 1,
-                    chips_won: share
-                });
-            }
+        // 3. Side Pot Logic
+        // Sort hands best first
+        playerHands.sort((a: any, b: any) => {
+            return a.compare(b); // Ascending? No, pokersolver returns -1 if a > b. So a.compare(b) puts a first.
         });
+        // Sort descending: b.compare(a)
+        // If b > a, returns 1 -> b comes first. Correct.
+
+        let remainingPot = this.pot;
+        const winners: string[] = [];
+
+        // Distribute pot
+        // We need to iterate through contribution levels
+        const allContributors = this.players.filter(p => p && p.handContribution > 0) as Player[];
+        const levels = Array.from(new Set(allContributors.map(p => p.handContribution))).sort((a, b) => a - b);
+
+        let prevLevel = 0;
+
+        for (const level of levels) {
+            const diff = level - prevLevel;
+            if (diff <= 0) continue;
+
+            // Calculate pot chunk for this level
+            // Chunk = diff * (number of players who contributed at least this level)
+            const contributorsAtLevel = allContributors.filter(p => p.handContribution >= level);
+            const chunk = diff * contributorsAtLevel.length;
+
+            if (chunk > remainingPot) {
+                // Should not happen if math is perfect, but safety check
+                // remainingPot = chunk; // No, cap it
+            }
+
+            // Who is eligible to win this chunk?
+            // Active players who contributed at least this level.
+            const eligiblePlayers = activePlayers.filter(p => p!.handContribution >= level);
+
+            if (eligiblePlayers.length > 0) {
+                // Find best hand among eligible
+                // Filter playerHands to only include eligible
+                const eligibleHands = playerHands.filter((h: any) => eligiblePlayers.some(p => p!.id === h.player.id));
+
+                // Sort eligible hands best first
+                eligibleHands.sort((a: any, b: any) => a.compare(b));
+
+                const bestHand = eligibleHands[0];
+                const chunkWinners = eligibleHands.filter((h: any) => h.compare(bestHand) === 0);
+
+                // Distribute chunk
+                const share = chunk / chunkWinners.length; // Use float division first
+
+                chunkWinners.forEach((w: any) => {
+                    // We can use floor but need to handle remainder?
+                    // For simplicity in JS/USDC, we can just add.
+                    // If we want to be precise with integers:
+                    // const share = Math.floor(chunk / chunkWinners.length);
+                    // const remainder = chunk % chunkWinners.length;
+                    // ... give remainder to first player.
+
+                    // Let's stick to simple floor for now to avoid creating chips
+                    const winAmount = Math.floor(share);
+                    w.player.chips += winAmount;
+                    this.ledger[w.player.id] = (this.ledger[w.player.id] || 0) + winAmount;
+
+                    console.log(`[Table ${this.id}] Pot Distribution: ${w.player.name} wins ${winAmount} chips from level ${level}`);
+
+                    // Track stats
+                    if (!winners.includes(w.player.id)) winners.push(w.player.id);
+
+                    // Persist Winner Stats (Incremental)
+                    const p = w.player;
+                    if (p.address) {
+                        db.updateUserStats(p.address, { hands_won: 1, chips_won: winAmount });
+                    }
+                });
+            } else {
+                // No active players eligible for this chunk (everyone folded who contributed this much?)
+                // This implies everyone who put in money at this level folded.
+                // The money should go to the last standing player(s) who are active?
+                // But we filtered activePlayers.
+                // If eligiblePlayers is empty, it means no ACTIVE player contributed this much.
+                // E.g. P1 bets 100, P2 calls 10. P2 folds. P1 wins.
+                // But P1 is active and contributed 100. So P1 is eligible.
+                // This case should only happen if somehow NO ONE is active, but we checked activePlayers.length > 0.
+                console.log(`[Table ${this.id}] No eligible players for pot chunk at level ${level}`);
+                // Edge case: Everyone folded? handled at start.
+                // So eligiblePlayers should not be empty if activePlayers > 0 and we are iterating levels.
+                // Wait, what if P1 bet 100, P2 called 10 (all in). P3 called 100.
+                // P1 and P3 active. Level 100. Eligible: P1, P3.
+                // Level 10. Eligible: P1, P2, P3.
+            }
+
+            prevLevel = level;
+            remainingPot -= chunk;
+            if (remainingPot <= 0.0001) break;
+        }
+
+        console.log(`[Table ${this.id}] Winners: ${winners.join(', ')}. Remaining Pot: ${remainingPot}`);
+        this.winners = winners;
 
         // Persist Player Stats (PFR, VPIP, 3-Bet) & Game History
         activePlayers.forEach(p => {
@@ -364,13 +486,9 @@ export class Table {
             }
         });
 
-        // Persist Game History for ALL active players (winners and losers)
-        // We need the game_id from the main game_history entry.
-        // Since we don't have it easily here without refactoring addGameHistory to return ID,
-        // let's do it properly.
-
-        // 1. Create Game History Entry
-        const winner = this.players.find(p => p?.id === this.winners[0]);
+        // Persist Game History
+        const winnerId = this.winners[0];
+        const winner = this.players.find(p => p?.id === winnerId);
         if (winner && winner.address) {
             db.addGameHistory({
                 table_id: this.id,
@@ -378,7 +496,6 @@ export class Table {
                 pot_size: this.pot,
                 hand_description: this.getForPlayer(winner.id).handDescription || "Winner"
             }).then(gameId => {
-                // 2. Create Player Game History Entries
                 this.players.forEach(p => {
                     if (p && p.address && !p.status.includes('sitting_out')) {
                         const netProfit = p.chips - p.startHandChips;

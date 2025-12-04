@@ -185,6 +185,8 @@ export function setupSocketHandlers(io: Server) {
                 chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
                 bet: 0,
+                handContribution: 0, // Initialize hand contribution
+                totalBuyIn: buyInAmount || 1000, // Initialize total buy-in
                 folded: false,
                 cards: [],
                 seat: -1,
