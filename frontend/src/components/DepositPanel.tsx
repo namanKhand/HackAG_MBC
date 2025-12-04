@@ -118,7 +118,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
     useEffect(() => {
         if (isApproveSuccess) {
             refetchAllowance();
-            setStep('depositing');
+            setTimeout(() => {
+                setStep('depositing');
+            }, 0);
         }
     }, [isApproveSuccess, refetchAllowance]);
 
