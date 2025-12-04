@@ -122,13 +122,16 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
         }
     }, [isApproveSuccess, refetchAllowance]);
 
+    const processedHash = React.useRef<string | null>(null);
+
     // Handle Deposit Success
     useEffect(() => {
-        if (isDepositSuccess && depositHash && step !== 'verifying') {
+        if (isDepositSuccess && depositHash && processedHash.current !== depositHash) {
+            processedHash.current = depositHash;
             setStep('verifying');
             verifyDeposit(depositHash);
         }
-    }, [isDepositSuccess, depositHash, verifyDeposit, step]);
+    }, [isDepositSuccess, depositHash, verifyDeposit]);
 
 
 
