@@ -85,16 +85,28 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
         query: { enabled: !!userAddress }
     });
 
+    // Fetch Account Balance (Chips)
+    const [accountBalance, setAccountBalance] = useState<number>(0);
+    useEffect(() => {
+        if (userAddress) {
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${userAddress}`)
+                .then(res => res.json())
+                .then(data => setAccountBalance(data.balance || 0))
+                .catch(err => console.error("Failed to fetch account balance", err));
+        }
+    }, [userAddress, isOpen]);
+
     useEffect(() => {
         console.log('BuyInModal Debug:', {
             userAddress,
             USDC_ADDRESS,
             balance: balance?.formatted,
+            accountBalance,
             allowance: allowance?.toString(),
             step,
             isApproveSuccess
         });
-    }, [userAddress, balance, allowance, step, isApproveSuccess]);
+    }, [userAddress, balance, accountBalance, allowance, step, isApproveSuccess]);
 
     useEffect(() => {
         if (isApproveSuccess && step !== 'depositing') {
@@ -133,10 +145,21 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
         setStep('depositing');
     };
 
+    const handleJoinWithBalance = () => {
+        // Join without txHash (uses account balance)
+        onSuccess(parseFloat(amount), "");
+    };
+
     const handleAction = () => {
         const val = parseFloat(amount);
         if (isNaN(val) || val < minBuyIn || val > maxBuyIn) {
             alert(`Please enter an amount between ${minBuyIn} and ${maxBuyIn}`);
+            return;
+        }
+
+        // Check if account balance is sufficient
+        if (accountBalance >= val) {
+            handleJoinWithBalance();
             return;
         }
 
@@ -154,8 +177,12 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
     // Determine button text
     let buttonText = 'Approve & Deposit';
     const needed = parseUnits(amount, 6);
+    const val = parseFloat(amount);
+    const canUseBalance = !isNaN(val) && accountBalance >= val;
 
-    if (isApprovePending || isApproveConfirming) {
+    if (canUseBalance) {
+        buttonText = 'Join with Account Balance';
+    } else if (isApprovePending || isApproveConfirming) {
         buttonText = 'Approving...';
     } else if (isDepositPending || isDepositConfirming) {
         buttonText = 'Depositing...';
@@ -178,9 +205,14 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-2">
                         <label className="block text-sm text-gray-400">Amount (USDC)</label>
-                        <span className="text-xs text-blue-400 font-mono">
-                            Balance: {balance?.formatted ? Number(balance.formatted).toFixed(2) : '0.00'} USDC
-                        </span>
+                        <div className="text-right">
+                            <span className="block text-xs text-green-400 font-mono">
+                                Account Chips: {accountBalance.toFixed(2)}
+                            </span>
+                            <span className="block text-xs text-blue-400 font-mono">
+                                Wallet: {balance?.formatted ? Number(balance.formatted).toFixed(2) : '0.00'} USDC
+                            </span>
+                        </div>
                     </div>
                     <div className="relative">
                         <input
@@ -217,7 +249,10 @@ export default function BuyInModal({ isOpen, onClose, onSuccess, minBuyIn, maxBu
                     <button
                         onClick={handleAction}
                         disabled={isPending}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                        className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${canUseBalance
+                            ? 'bg-green-600 hover:bg-green-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white'
+                            }`}
                     >
                         {buttonText}
                     </button>

@@ -1,11 +1,14 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { Home, LayoutDashboard, ChevronLeft, ChevronRight, LogOut, User, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAccount, useBalance } from 'wagmi';
 import { USDC_ADDRESS } from '../constants';
+import { CashoutPanel } from './CashoutPanel';
+import { DepositPanel } from './DepositPanel';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -21,6 +24,28 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
         address,
         token: USDC_ADDRESS as `0x${string}`,
     });
+    const [showCashout, setShowCashout] = useState(false);
+    const [showDeposit, setShowDeposit] = useState(false);
+    const [chipsBalance, setChipsBalance] = useState<number>(0);
+
+    // Fetch Chips Balance
+    useEffect(() => {
+        const fetchBalance = () => {
+            if (address) {
+                fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
+                    .then(res => res.json())
+                    .then(data => setChipsBalance(data.balance || 0))
+                    .catch(err => console.error("Failed to fetch account balance", err));
+            } else {
+                setChipsBalance(0);
+            }
+        };
+
+        fetchBalance();
+        const interval = setInterval(fetchBalance, 10000); // Poll every 10s
+
+        return () => clearInterval(interval);
+    }, [address]);
 
     const navItems = [
         { name: 'Home', path: '/', icon: Home },
@@ -100,6 +125,54 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 
             {/* Wallet Connection & Logout */}
             <div className="p-4 border-t border-white/10 bg-transparent space-y-4">
+                {/* Game Chips Balance */}
+                {address && (
+                    <div className={`bg-zinc-800/50 rounded-xl p-3 border border-white/5 ${isCollapsed ? 'hidden' : ''}`}>
+                        <p className="text-xs text-gray-400 mb-1">Game Chips</p>
+                        <p className="text-xl font-bold text-green-400 font-mono">
+                            {chipsBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                )}
+
+                {/* Deposit Button */}
+                {!isCollapsed && (
+                    <button
+                        onClick={() => setShowDeposit(true)}
+                        className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                        <Wallet size={18} />
+                        <span>Deposit Funds</span>
+                    </button>
+                )}
+                {isCollapsed && (
+                    <button
+                        onClick={() => setShowDeposit(true)}
+                        className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 py-2 rounded-xl transition-colors flex items-center justify-center"
+                    >
+                        <Wallet size={18} />
+                    </button>
+                )}
+
+                {/* Cashout Button */}
+                {!isCollapsed && (
+                    <button
+                        onClick={() => setShowCashout(true)}
+                        className="w-full bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/30 py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                        <LogOut size={18} />
+                        <span>Cashout Chips</span>
+                    </button>
+                )}
+                {isCollapsed && (
+                    <button
+                        onClick={() => setShowCashout(true)}
+                        className="w-full bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/30 py-2 rounded-xl transition-colors flex items-center justify-center"
+                    >
+                        <LogOut size={18} />
+                    </button>
+                )}
+
                 <div className={`transition-all duration-300 ${isCollapsed ? 'scale-75 origin-center -ml-1' : ''}`}>
                     <ConnectButton.Custom>
                         {({
@@ -207,6 +280,36 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
                 </div>
 
             </div>
+
+            {/* Cashout Modal Overlay */}
+            {showCashout && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                    <div className="relative w-full max-w-md">
+                        <button
+                            onClick={() => setShowCashout(false)}
+                            className="absolute -top-10 right-0 text-gray-400 hover:text-white"
+                        >
+                            Close ✕
+                        </button>
+                        <CashoutPanel />
+                    </div>
+                </div>
+            )}
+
+            {/* Deposit Modal Overlay */}
+            {showDeposit && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                    <div className="relative w-full max-w-md">
+                        <button
+                            onClick={() => setShowDeposit(false)}
+                            className="absolute -top-10 right-0 text-gray-400 hover:text-white"
+                        >
+                            Close ✕
+                        </button>
+                        <DepositPanel />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

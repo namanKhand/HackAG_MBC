@@ -3,7 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import { setupSocketHandlers } from "./socketHandlers";
+import { setupSocketHandlers, processPayout, verifyDeposit } from "./socketHandlers";
 import { BlockchainListener } from "./BlockchainListener";
 import { db } from "./database";
 import { generateToken, verifyToken, hashPassword, comparePassword } from "./auth";
@@ -250,6 +250,62 @@ app.get("/api/history/:address", async (req, res) => {
         res.json(history);
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch history" });
+    }
+});
+
+app.get("/api/balance/:address", async (req, res) => {
+    try {
+        const balance = await db.getUserBalance(req.params.address);
+        res.json({ balance });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch balance" });
+    }
+});
+
+app.post("/api/cashout", async (req, res) => {
+    const { address, amount } = req.body;
+    if (!address || !amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid request" });
+    }
+
+    try {
+        const balance = await db.getUserBalance(address);
+        if (balance < amount) {
+            return res.status(400).json({ error: "Insufficient balance" });
+        }
+
+        // Deduct from DB first
+        await db.updateUserBalance(address, -amount);
+
+        // Process Payout
+        await processPayout(address, amount);
+
+        res.json({ success: true, newBalance: balance - amount });
+    } catch (e) {
+        console.error("Cashout error:", e);
+        res.status(500).json({ error: "Cashout failed" });
+    }
+});
+
+app.post("/api/verify-deposit", async (req, res) => {
+    const { address, txHash } = req.body;
+    if (!address || !txHash) {
+        return res.status(400).json({ error: "Invalid request" });
+    }
+
+    try {
+        console.log(`Verifying deposit for ${address} with hash ${txHash}`);
+        const amount = await verifyDeposit(txHash, address);
+
+        if (amount) {
+            await db.updateUserBalance(address, amount);
+            res.json({ success: true, amount });
+        } else {
+            res.status(400).json({ error: "Invalid deposit or mismatch" });
+        }
+    } catch (e) {
+        console.error("Deposit verification error:", e);
+        res.status(500).json({ error: "Verification failed" });
     }
 });
 

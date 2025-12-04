@@ -39,7 +39,7 @@ const VAULT_ABI = [
 ];
 
 // Helper to verify deposit on-chain
-async function verifyDeposit(txHash: string, userAddress: string): Promise<number | null> {
+export async function verifyDeposit(txHash: string, userAddress: string): Promise<number | null> {
     const MIDDLEMAN_VAULT_ADDRESS = process.env.MIDDLEMAN_VAULT_ADDRESS;
     const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
 
@@ -99,7 +99,7 @@ async function verifyDeposit(txHash: string, userAddress: string): Promise<numbe
 }
 
 // Helper to process payout
-async function processPayout(address: string, amount: number) {
+export async function processPayout(address: string, amount: number) {
     if (!MIDDLEMAN_PRIVATE_KEY || !MIDDLEMAN_VAULT_ADDRESS) {
         console.error("Missing env vars for payout");
         return;
@@ -169,63 +169,94 @@ export function setupSocketHandlers(io: Server) {
             // @ts-ignore
             const isRealMoney = table.isRealMoney;
 
+            // @ts-ignore
+            const isRealMoney = table.isRealMoney;
+
             if (isRealMoney) {
-                // Verify deposit
-                if (!txHash) {
-                    socket.emit("error", "Deposit transaction required");
+                // 1. Handle Deposit (if txHash provided)
+                if (txHash) {
+                    console.log(`Verifying deposit for ${name} (Tx: ${txHash})...`);
+                    const verifiedAmount = await verifyDeposit(txHash, address);
+                    if (verifiedAmount) {
+                        console.log(`Deposit verified: ${verifiedAmount} chips. Adding to balance.`);
+                        await db.updateUserBalance(address, verifiedAmount);
+                        socket.emit("deposit_success", { amount: verifiedAmount });
+                    } else {
+                        console.error(`Invalid deposit for ${name} (Tx: ${txHash})`);
+                        socket.emit("error", "Invalid deposit transaction. Please contact support if funds were deducted.");
+                        return;
+                    }
+                }
+
+                // 2. Check Balance & Deduct Buy-in
+                const currentBalance = await db.getUserBalance(address);
+                const buyIn = buyInAmount || 1000; // Default or requested
+
+                if (currentBalance >= buyIn) {
+                    await db.updateUserBalance(address, -buyIn); // Deduct buy-in
+
+                    // Create Session
+                    const sessionId = await db.createTableSession(tableId, user.id, buyIn);
+
+                    const player: Player = {
+                        id: socket.id,
+                        address,
+                        accountId: user.id,
+                        sessionId,
+                        name: user.username || address.slice(0, 6),
+                        chips: buyIn,
+                        startHandChips: buyIn,
+                        bet: 0,
+                        handContribution: 0,
+                        totalBuyIn: buyIn,
+                        folded: false,
+                        cards: [],
+                        seat: -1,
+                        isTurn: false,
+                        hasActed: false,
+                        status: 'active',
+                        stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }
+                    };
+
+                    if (table.addPlayer(player)) {
+                        socket.join(tableId);
+                        const sockets = await io.in(tableId).fetchSockets();
+                        for (const s of sockets) {
+                            s.emit("table_state", table.getForPlayer(s.id));
+                        }
+                        console.log(`${player.name} joined table ${tableId} with ${buyIn} chips`);
+                    } else {
+                        // Refund if table full
+                        await db.updateUserBalance(address, buyIn);
+                        socket.emit("error", "Table full");
+                    }
+                    return; // Done for Real Money
+                } else {
+                    socket.emit("error", `Insufficient chip balance. You have ${currentBalance}, need ${buyIn}. Please deposit funds.`);
                     return;
                 }
             }
 
-            // Create Session
-            const sessionId = await db.createTableSession(tableId, user.id, buyInAmount || 1000);
-
+            // Play Money Logic (Fallthrough)
             const player: Player = {
                 id: socket.id,
                 address,
                 accountId: user.id, // Store account ID for stats
-                sessionId, // Store session ID
-                name: user.username || address.slice(0, 6), // Use account username or fallback
+                sessionId: undefined, // No session for play money for now? Or maybe yes.
+                name: user.username || `${address.slice(0, 6)}...`,
                 chips: buyInAmount || 1000,
                 startHandChips: buyInAmount || 1000,
-                totalBuyIn: buyInAmount || 1000, // Initialize total buy-in
+                totalBuyIn: buyInAmount || 1000,
                 bet: 0,
-                handContribution: 0, // Initialize hand contribution
-
+                handContribution: 0,
                 folded: false,
                 cards: [],
                 seat: -1,
                 isTurn: false,
                 hasActed: false,
                 status: 'active',
-                stats: {
-                    pfr: false,
-                    vpip: false,
-                    threeBet: false,
-                    threeBetOpp: false
-                }
+                stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }
             };
-
-            // Verify deposit if txHash is provided (Real Money Mode)
-            if (isRealMoney && txHash && address) {
-                console.log(`Verifying deposit for ${name}...`);
-                const verifiedAmount = await verifyDeposit(txHash, address);
-                if (verifiedAmount) {
-                    console.log(`Deposit verified: ${verifiedAmount} chips`);
-                    player.chips = verifiedAmount;
-                    player.startHandChips = verifiedAmount;
-                    // Update session buy-in with verified amount
-                    // We could update the DB session record here if needed, but initial buy-in is fine for now
-                } else {
-                    console.error(`Invalid deposit for ${name}`);
-                    socket.emit("error", "Invalid deposit transaction");
-                    return;
-                }
-            } else if (!isRealMoney) {
-                // Play money - give free chips if needed or use buyInAmount
-                player.chips = buyInAmount || 1000;
-                player.startHandChips = player.chips;
-            }
 
             if (table.addPlayer(player)) {
                 console.log(`[JoinTable] Added player ${player.name} to table ${tableId}`);
@@ -329,15 +360,11 @@ export function setupSocketHandlers(io: Server) {
                     }
 
                     console.log(`[LeaveTable] Player ${player.name} (${socket.id}) leaving table ${tableId}`);
-                    console.log(`[LeaveTable] Chips: ${player.chips}, Address: ${player.address}, RealMoney: ${table.config.isRealMoney}`);
 
                     if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        const amount = player.chips;
-                        player.chips = 0; // Prevent double payout
-                        console.log(`[LeaveTable] Triggering payout for ${amount} chips to ${player.address}`);
-                        await processPayout(player.address, amount);
-                    } else {
-                        console.log(`[LeaveTable] Payout skipped. Conditions met? Chips>0: ${player.chips > 0}, Address: ${!!player.address}, RealMoney: ${table.config.isRealMoney}`);
+                        await db.updateUserBalance(player.address, player.chips);
+                        console.log(`Saved ${player.chips} chips to balance for ${player.name}`);
+                        player.chips = 0;
                     }
                 }
                 table.removePlayer(socket.id);
@@ -362,12 +389,10 @@ export function setupSocketHandlers(io: Server) {
                         await db.updateTableSession(player.sessionId, player.chips);
                     }
 
-                    // Auto-payout on disconnect
-                    if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        const amount = player.chips;
-                        player.chips = 0; // Prevent double payout
-                        console.log(`[Disconnect] Triggering payout for ${amount} chips to ${player.address}`);
-                        await processPayout(player.address, amount);
+                    // Save chips to DB on disconnect
+                    if (player.chips > 0 && player.address && (table as any).isRealMoney) {
+                        await db.updateUserBalance(player.address, player.chips);
+                        console.log(`Saved ${player.chips} chips to balance for disconnected user ${player.name}`);
                     }
 
                     table.removePlayer(socket.id);

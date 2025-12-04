@@ -4,12 +4,20 @@ async function main() {
     const [deployer] = await hre.ethers.getSigners();
     console.log("Deploying contracts with the account:", deployer.address);
 
-    // Deploy MockUSDC (only for dev/testnets without USDC)
-    const MockUSDC = await hre.ethers.getContractFactory("MockUSDC");
-    const mockUSDC = await MockUSDC.deploy();
-    await mockUSDC.waitForDeployment();
-    const usdcAddress = await mockUSDC.getAddress();
-    console.log("MockUSDC deployed to:", usdcAddress);
+    const networkName = hre.network.name;
+    let usdcAddress;
+
+    if (networkName === 'base' || networkName === 'mainnet') {
+        console.log("Deploying to Base Mainnet. Using real USDC.");
+        usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    } else {
+        // Deploy MockUSDC (only for dev/testnets without USDC)
+        const MockUSDC = await hre.ethers.getContractFactory("MockUSDC");
+        const mockUSDC = await MockUSDC.deploy();
+        await mockUSDC.waitForDeployment();
+        usdcAddress = await mockUSDC.getAddress();
+        console.log("MockUSDC deployed to:", usdcAddress);
+    }
 
     // Deploy ReputationNFT
     const ReputationNFT = await hre.ethers.getContractFactory("ReputationNFT");

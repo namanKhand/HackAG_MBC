@@ -39,7 +39,8 @@ export class Database {
                 vpip_count INTEGER DEFAULT 0,
                 vpip_opportunity INTEGER DEFAULT 0,
                 three_bet_count INTEGER DEFAULT 0,
-                three_bet_opportunity INTEGER DEFAULT 0
+                three_bet_opportunity INTEGER DEFAULT 0,
+                chips_balance REAL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS play_money_stats (
@@ -87,6 +88,13 @@ export class Database {
                 FOREIGN KEY(account_id) REFERENCES accounts(id)
             );
         `);
+
+        // Migration: Add chips_balance if it doesn't exist (for existing DBs)
+        try {
+            await this.db.exec("ALTER TABLE users ADD COLUMN chips_balance REAL DEFAULT 0");
+        } catch (e) {
+            // Column likely exists, ignore
+        }
     }
 
     async createAccount(username: string, email: string, passwordHash: string, isGuest: boolean = false): Promise<number> {
@@ -143,6 +151,19 @@ export class Database {
             return this.getUser(address);
         }
         return user;
+    }
+
+    async updateUserBalance(address: string, amount: number) {
+        if (!this.db) throw new Error("DB not initialized");
+        // Ensure user exists
+        await this.getUser(address);
+        await this.db.run('UPDATE users SET chips_balance = chips_balance + ? WHERE address = ?', amount, address);
+    }
+
+    async getUserBalance(address: string): Promise<number> {
+        if (!this.db) throw new Error("DB not initialized");
+        const user = await this.getUser(address);
+        return user.chips_balance || 0;
     }
 
     async updateUserStats(identifier: string | number, stats: {

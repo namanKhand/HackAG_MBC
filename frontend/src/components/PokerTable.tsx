@@ -104,11 +104,27 @@ export default function PokerTable({
         preActionRef.current = preAction;
     }, [preAction]);
 
+    const [chipsBalance, setChipsBalance] = useState<number>(0);
+
+    // Fetch Chips Balance
+    useEffect(() => {
+        const fetchBalance = () => {
+            if (address) {
+                fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
+                    .then(res => res.json())
+                    .then(data => setChipsBalance(data.balance || 0))
+                    .catch(err => console.error("Failed to fetch account balance", err));
+            }
+        };
+        fetchBalance();
+    }, [address, showBuyInModal]); // Refetch when modal opens
+
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
     const effectiveBuyIn = Math.min(Math.max(minBuyIn, buyInAmount), maxBuyIn);
 
-    const canBuyIn = mode === 'paper' || (walletBalance >= effectiveBuyIn); // Check if wallet has enough for SELECTED amount
+    // Check against CHIPS balance for Real Money mode
+    const canBuyIn = mode === 'paper' || (chipsBalance >= effectiveBuyIn);
 
     useEffect(() => {
         const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001');
@@ -597,7 +613,10 @@ export default function PokerTable({
                         <h2 className="text-3xl font-bold text-white mb-2">Buy In</h2>
                         <p className="text-gray-400 mb-2">Select your buy-in amount to join the table.</p>
                         {mode === 'real' && (
-                            <p className="text-blue-400 font-mono mb-6 text-sm">Wallet Balance: ${walletBalance.toFixed(2)} USDC</p>
+                            <div className="mb-6 space-y-1">
+                                <p className="text-green-400 font-mono text-sm">Game Chips: {chipsBalance.toFixed(2)}</p>
+                                <p className="text-blue-400 font-mono text-xs">Wallet: {walletBalance.toFixed(2)} USDC</p>
+                            </div>
                         )}
 
                         <div className="mb-8">
@@ -629,8 +648,16 @@ export default function PokerTable({
                         </div>
 
                         {!canBuyIn ? (
-                            <div className="text-red-500 font-bold mb-4">
-                                {walletBalance < minBuyIn ? `Insufficient funds. Minimum buy-in is $${minBuyIn}.` : "Insufficient funds for selected buy-in."}
+                            <div className="text-center">
+                                <div className="text-red-500 font-bold mb-4">
+                                    {chipsBalance < minBuyIn ? `Insufficient chips. Minimum buy-in is $${minBuyIn}.` : "Insufficient chips for selected buy-in."}
+                                </div>
+                                <button
+                                    onClick={() => router.push('/lobby')}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg"
+                                >
+                                    Go to Lobby to Deposit
+                                </button>
                             </div>
                         ) : (
                             <button
