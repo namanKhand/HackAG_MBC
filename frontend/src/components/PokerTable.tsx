@@ -107,17 +107,26 @@ export default function PokerTable({
     const [chipsBalance, setChipsBalance] = useState<number>(0);
 
     // Fetch Chips Balance
+    // Fetch Chips Balance
+    const fetchBalance = () => {
+        if (address) {
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
+                .then(res => res.json())
+                .then(data => setChipsBalance(data.balance || 0))
+                .catch(err => console.error("Failed to fetch account balance", err));
+        }
+    };
+
     useEffect(() => {
-        const fetchBalance = () => {
-            if (address) {
-                fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
-                    .then(res => res.json())
-                    .then(data => setChipsBalance(data.balance || 0))
-                    .catch(err => console.error("Failed to fetch account balance", err));
-            }
-        };
         fetchBalance();
     }, [address, showBuyInModal]); // Refetch when modal opens
+
+    // Refetch balance when I join the table
+    useEffect(() => {
+        if (me) {
+            fetchBalance();
+        }
+    }, [me?.id]);
 
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
@@ -636,7 +645,7 @@ export default function PokerTable({
                                 type="range"
                                 min={minBuyIn}
                                 max={maxBuyIn}
-                                step="50"
+                                step={minBuyIn < 1 ? "0.1" : "50"}
                                 value={effectiveBuyIn}
                                 onChange={(e) => setBuyInAmount(Number(e.target.value))}
                                 className="w-full accent-green-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
