@@ -169,8 +169,7 @@ export function setupSocketHandlers(io: Server) {
             // @ts-ignore
             const isRealMoney = table.isRealMoney;
 
-            // @ts-ignore
-            const isRealMoney = table.isRealMoney;
+
 
             if (isRealMoney) {
                 // 1. Handle Deposit (if txHash provided)
@@ -362,9 +361,10 @@ export function setupSocketHandlers(io: Server) {
                     console.log(`[LeaveTable] Player ${player.name} (${socket.id}) leaving table ${tableId}`);
 
                     if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        await db.updateUserBalance(player.address, player.chips);
-                        console.log(`Saved ${player.chips} chips to balance for ${player.name}`);
-                        player.chips = 0;
+                        const amount = player.chips;
+                        player.chips = 0; // Prevent race condition
+                        await db.updateUserBalance(player.address, amount);
+                        console.log(`Saved ${amount} chips to balance for ${player.name}`);
                     }
                 }
                 table.removePlayer(socket.id);
@@ -391,8 +391,10 @@ export function setupSocketHandlers(io: Server) {
 
                     // Save chips to DB on disconnect
                     if (player.chips > 0 && player.address && (table as any).isRealMoney) {
-                        await db.updateUserBalance(player.address, player.chips);
-                        console.log(`Saved ${player.chips} chips to balance for disconnected user ${player.name}`);
+                        const amount = player.chips;
+                        player.chips = 0; // Prevent race condition
+                        await db.updateUserBalance(player.address, amount);
+                        console.log(`Saved ${amount} chips to balance for disconnected user ${player.name}`);
                     }
 
                     table.removePlayer(socket.id);
