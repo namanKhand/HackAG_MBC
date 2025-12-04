@@ -28,15 +28,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
-            fetchUser(storedToken);
-        } else {
-            setLoading(false);
-        }
-    }, [fetchUser]);
+
+
+    const logout = React.useCallback(() => {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+        router.push('/login');
+    }, [router]);
 
     const fetchUser = React.useCallback(async (authToken: string) => {
         try {
@@ -55,7 +54,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [logout]);
+
+    useEffect(() => {
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            setToken(storedToken);
+            fetchUser(storedToken);
+        } else {
+            setLoading(false);
+        }
+    }, [fetchUser]);
 
     const login = (newToken: string, newUser: User) => {
         localStorage.setItem('token', newToken);
@@ -64,12 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         router.push('/');
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        router.push('/login');
-    };
+
 
     const refreshUser = async () => {
         if (token) {

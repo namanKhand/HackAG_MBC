@@ -82,28 +82,6 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
         }
     }, [address]);
 
-    useEffect(() => {
-        fetchAccountBalance();
-        const interval = setInterval(fetchAccountBalance, 10000);
-        return () => clearInterval(interval);
-    }, [address, fetchAccountBalance]);
-
-    // Handle Approve Success
-    useEffect(() => {
-        if (isApproveSuccess) {
-            refetchAllowance();
-            setStep('depositing');
-        }
-    }, [isApproveSuccess, refetchAllowance]);
-
-    // Handle Deposit Success
-    useEffect(() => {
-        if (isDepositSuccess && depositHash) {
-            setStep('verifying');
-            verifyDeposit(depositHash);
-        }
-    }, [isDepositSuccess, depositHash, verifyDeposit]);
-
     const verifyDeposit = React.useCallback(async (txHash: string) => {
         try {
             // Call backend to verify deposit
@@ -129,6 +107,30 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
             setStep('input');
         }
     }, [address, fetchAccountBalance]);
+
+    useEffect(() => {
+        fetchAccountBalance();
+        const interval = setInterval(fetchAccountBalance, 10000);
+        return () => clearInterval(interval);
+    }, [address, fetchAccountBalance]);
+
+    // Handle Approve Success
+    useEffect(() => {
+        if (isApproveSuccess) {
+            refetchAllowance();
+            setStep('depositing');
+        }
+    }, [isApproveSuccess, refetchAllowance]);
+
+    // Handle Deposit Success
+    useEffect(() => {
+        if (isDepositSuccess && depositHash) {
+            setStep('verifying');
+            verifyDeposit(depositHash);
+        }
+    }, [isDepositSuccess, depositHash, verifyDeposit]);
+
+
 
     const handleAction = () => {
         const val = parseFloat(amount);
