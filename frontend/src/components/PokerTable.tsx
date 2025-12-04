@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
@@ -112,25 +112,25 @@ export default function PokerTable({
     // Fetch Chips Balance
     // Fetch Chips Balance
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const fetchBalance = () => {
+    const fetchBalance = useCallback(() => {
         if (address) {
             fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)
                 .then(res => res.json())
                 .then(data => setChipsBalance(data.balance || 0))
                 .catch(err => console.error("Failed to fetch account balance", err));
         }
-    };
+    }, [address]);
 
     useEffect(() => {
         fetchBalance();
-    }, [address, showBuyInModal]); // Refetch when modal opens
+    }, [address, showBuyInModal, fetchBalance]); // Refetch when modal opens
 
     // Refetch balance when I join the table
     useEffect(() => {
         if (me) {
             fetchBalance();
         }
-    }, [me?.id]);
+    }, [me?.id, fetchBalance]);
 
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
