@@ -36,9 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             setLoading(false);
         }
-    }, []);
+    }, [fetchUser]);
 
-    const fetchUser = async (authToken: string) => {
+    const fetchUser = React.useCallback(async (authToken: string) => {
         try {
             const res = await fetch('http://localhost:3001/api/auth/me', {
                 headers: { Authorization: `Bearer ${authToken}` }
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const login = (newToken: string, newUser: User) => {
         localStorage.setItem('token', newToken);

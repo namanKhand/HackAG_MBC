@@ -191,7 +191,7 @@ export default function PokerTable({
         return () => {
             newSocket.disconnect();
         };
-    }, [tableId, playerName, address, initialBuyIn, initialTxHash, token]);
+    }, [tableId, playerName, address, initialBuyIn, initialTxHash, token, router]);
 
     const handleAction = (action: string, amount?: number) => {
         if (socket) {

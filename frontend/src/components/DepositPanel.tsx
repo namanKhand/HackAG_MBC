@@ -69,7 +69,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
     });
 
     // Fetch Account Balance
-    const fetchAccountBalance = async () => {
+    const fetchAccountBalance = React.useCallback(async () => {
         if (!address) return;
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`);
@@ -80,13 +80,13 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
         } catch (err) {
             console.error("Failed to fetch balance", err);
         }
-    };
+    }, [address]);
 
     useEffect(() => {
         fetchAccountBalance();
         const interval = setInterval(fetchAccountBalance, 10000);
         return () => clearInterval(interval);
-    }, [address]);
+    }, [address, fetchAccountBalance]);
 
     // Handle Approve Success
     useEffect(() => {
@@ -102,9 +102,9 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
             setStep('verifying');
             verifyDeposit(depositHash);
         }
-    }, [isDepositSuccess, depositHash]);
+    }, [isDepositSuccess, depositHash, verifyDeposit]);
 
-    const verifyDeposit = async (txHash: string) => {
+    const verifyDeposit = React.useCallback(async (txHash: string) => {
         try {
             // Call backend to verify deposit
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/verify-deposit`, {
@@ -128,7 +128,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
             setMessage({ type: 'error', text: "Verification error. Please contact support." });
             setStep('input');
         }
-    };
+    }, [address, fetchAccountBalance]);
 
     const handleAction = () => {
         const val = parseFloat(amount);
@@ -212,8 +212,8 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
                     onClick={handleAction}
                     disabled={isPending || !amount || parseFloat(amount) <= 0}
                     className={`w-full py-2 rounded font-bold transition-colors ${isPending || !amount || parseFloat(amount) <= 0
-                            ? 'bg-gray-600 cursor-not-allowed text-gray-400'
-                            : 'bg-blue-600 hover:bg-blue-500 text-white'
+                        ? 'bg-gray-600 cursor-not-allowed text-gray-400'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white'
                         }`}
                 >
                     {buttonText}
