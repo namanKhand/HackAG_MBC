@@ -332,9 +332,10 @@ export function setupSocketHandlers(io: Server) {
                     console.log(`[LeaveTable] Chips: ${player.chips}, Address: ${player.address}, RealMoney: ${table.config.isRealMoney}`);
 
                     if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        console.log(`[LeaveTable] Triggering payout for ${player.chips} chips to ${player.address}`);
-                        await processPayout(player.address, player.chips);
-                        player.chips = 0; // Reset chips after payout
+                        const amount = player.chips;
+                        player.chips = 0; // Prevent double payout
+                        console.log(`[LeaveTable] Triggering payout for ${amount} chips to ${player.address}`);
+                        await processPayout(player.address, amount);
                     } else {
                         console.log(`[LeaveTable] Payout skipped. Conditions met? Chips>0: ${player.chips > 0}, Address: ${!!player.address}, RealMoney: ${table.config.isRealMoney}`);
                     }
@@ -363,9 +364,10 @@ export function setupSocketHandlers(io: Server) {
 
                     // Auto-payout on disconnect
                     if (player.chips > 0 && player.address && table.config.isRealMoney) {
-                        console.log(`[Disconnect] Triggering payout for ${player.chips} chips to ${player.address}`);
-                        await processPayout(player.address, player.chips);
-                        player.chips = 0; // Reset chips after payout
+                        const amount = player.chips;
+                        player.chips = 0; // Prevent double payout
+                        console.log(`[Disconnect] Triggering payout for ${amount} chips to ${player.address}`);
+                        await processPayout(player.address, amount);
                     }
 
                     table.removePlayer(socket.id);

@@ -5,8 +5,10 @@ export class Database {
     private db: SQLiteDatabase | null = null;
 
     async init() {
+        const dbPath = process.env.DB_PATH || './poker.db';
+        console.log(`Initializing database at: ${dbPath}`);
         this.db = await open({
-            filename: './poker.db',
+            filename: dbPath,
             driver: sqlite3.Database
         });
 
