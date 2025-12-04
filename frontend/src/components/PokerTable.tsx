@@ -38,8 +38,6 @@ interface TableState {
     gameActive: boolean;
     stage: string;
     winners?: string[];
-    stage: string;
-    winners?: string[];
     handDescription?: string;
     minRaise?: number;
 }
@@ -133,7 +131,7 @@ export default function PokerTable({
         if (me) {
             fetchBalance();
         }
-    }, [me?.id, fetchBalance]);
+    }, [me, fetchBalance]);
 
     // Derive effective buy-in to avoid useEffect state updates
     // Allow slider to go up to maxBuyIn regardless of wallet balance
