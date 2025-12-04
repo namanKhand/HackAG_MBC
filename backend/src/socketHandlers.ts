@@ -167,7 +167,7 @@ export function setupSocketHandlers(io: Server) {
             }
 
             // @ts-ignore
-            const isRealMoney = table.isRealMoney;
+            const isRealMoney = table.config.isRealMoney;
 
 
 
