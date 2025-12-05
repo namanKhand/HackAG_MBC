@@ -10,10 +10,14 @@ tables["default"] = new Table("default");
 
 // Initialize Public Tables
 const PUBLIC_TABLES = [
-    { id: 'micro', name: 'Micro Stakes', smallBlind: 0.01, bigBlind: 0.02, isRealMoney: true },
-    { id: 'low', name: 'Low Stakes', smallBlind: 1, bigBlind: 2, isRealMoney: true },
-    { id: 'mid', name: 'Mid Stakes', smallBlind: 5, bigBlind: 10, isRealMoney: true },
-    { id: 'high', name: 'High Stakes', smallBlind: 50, bigBlind: 100, isRealMoney: true },
+    { id: 'micro-1', name: 'Micro Stakes', smallBlind: 0.01, bigBlind: 0.02, isRealMoney: true },
+    { id: 'micro-2', name: 'Micro Stakes', smallBlind: 0.1, bigBlind: 0.2, isRealMoney: true },
+    { id: 'low-1', name: 'Low Stakes', smallBlind: 0.5, bigBlind: 1, isRealMoney: true },
+    { id: 'low-2', name: 'Low Stakes', smallBlind: 1, bigBlind: 2, isRealMoney: true },
+    { id: 'mid-1', name: 'Mid Stakes', smallBlind: 2, bigBlind: 5, isRealMoney: true },
+    { id: 'mid-2', name: 'Mid Stakes', smallBlind: 5, bigBlind: 10, isRealMoney: true },
+    { id: 'high-1', name: 'High Stakes', smallBlind: 10, bigBlind: 20, isRealMoney: true },
+    { id: 'high-2', name: 'High Stakes', smallBlind: 50, bigBlind: 100, isRealMoney: true },
 ];
 
 PUBLIC_TABLES.forEach(config => {
