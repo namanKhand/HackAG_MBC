@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import { Settings, Volume2, Layers, Layout } from 'lucide-react';

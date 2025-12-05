@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useAccount, useConnect } from 'wagmi';
 import { useRouter } from 'next/navigation';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 
 export default function Home() {
   const { isConnected } = useAccount();
   const { connectors, connect } = useConnect();
+  const { openConnectModal } = useConnectModal();
   const router = useRouter();
   const [showPoker, setShowPoker] = useState(false);
   const [moveUp, setMoveUp] = useState(false);
@@ -57,34 +59,54 @@ export default function Home() {
 
   const handleConnect = async (wallet: { name: string, id: string }) => {
     try {
-      // Try to find specific connector first
-      let connector = getWallet(wallet.id);
+      console.log('Attempting to connect to:', wallet.name);
+      console.log('Available connectors:', connectors.map(c => `${c.name} (${c.id})`));
 
-      // Special handling for Base Account / Coinbase
-      if (!connector && wallet.id === 'baseAccount') {
-        connector = connectors.find(c => c.id === 'coinbaseWalletSDK');
+      let connector;
+
+      // Robust MetaMask finding
+      if (wallet.id === 'metaMask') {
+        connector = connectors.find(c =>
+          c.id === 'metaMask' ||
+          c.id === 'io.metamask' ||
+          (c.name.toLowerCase().includes('metamask'))
+        );
       }
-
-      // Special handling for MetaMask (might be 'injected')
-      if (!connector && wallet.id === 'metaMask') {
-        connector = connectors.find(c => c.id === 'injected' && c.name === 'MetaMask');
+      // Robust Coinbase/Base Account finding
+      else if (wallet.id === 'baseAccount') {
+        connector = connectors.find(c =>
+          c.id === 'coinbaseWalletSDK' ||
+          c.name.toLowerCase().includes('coinbase')
+        );
+      }
+      // Robust Rainbow finding
+      else if (wallet.id === 'rainbow') {
+        connector = connectors.find(c =>
+          c.id === 'rainbow' ||
+          (c.name.toLowerCase().includes('rainbow'))
+        );
+      }
+      // General fallback lookup
+      else {
+        connector = getWallet(wallet.id);
       }
 
       if (connector) {
+        console.log('Found connector:', connector.name, connector.id);
         connect({ connector });
       } else {
-        // Fallback to WalletConnect
-        const wcConnector = connectors.find(c => c.id === 'walletConnect');
-        if (wcConnector) {
-          console.log('Falling back to WalletConnect for', wallet.name);
-          connect({ connector: wcConnector });
+        console.log('Specific connector not found. Opening general modal.');
+        // Fallback to RainbowKit Modal
+        if (openConnectModal) {
+          openConnectModal();
         } else {
-          alert('Wallet connector not found. Please install the wallet extension.');
+          alert('Wallet connector not found and modal unavailable.');
         }
       }
     } catch (error) {
       console.error('Connection failed:', error);
-      alert('Failed to connect wallet. Please try again.');
+      // Fallback to modal on error
+      if (openConnectModal) openConnectModal();
     }
   };
 
