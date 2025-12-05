@@ -1,5 +1,4 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import { Settings, Volume2, Layers, Layout } from 'lucide-react';
 import { useAccount, useBalance } from 'wagmi';
@@ -14,12 +13,30 @@ export default function SettingsPage() {
     });
 
     const { settings, updateSetting, toggleSetting } = useSettings();
+    const [pokerBalance, setPokerBalance] = useState(0);
+
+    // Fetch Poker Balance
+    useEffect(() => {
+        const fetchPokerBalance = async () => {
+            if (!address) return;
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`);
+                const data = await res.json();
+                if (data.balance !== undefined) {
+                    setPokerBalance(data.balance);
+                }
+            } catch (err) {
+                console.error("Failed to fetch poker balance", err);
+            }
+        };
+        fetchPokerBalance();
+    }, [address]);
 
     return (
         <div className="min-h-screen bg-black text-white flex">
             <LobbySidebar
                 usdcBalance={usdcBalance}
-                pokerBalance={0}
+                pokerBalance={pokerBalance}
                 onDeposit={() => { }}
                 onCashout={() => { }}
             />

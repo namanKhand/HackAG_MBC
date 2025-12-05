@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import { Trophy, Flame, History, Medal } from 'lucide-react';
 import { useAccount, useBalance } from 'wagmi';
@@ -14,6 +14,24 @@ export default function LeaderboardPage() {
     });
 
     const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'all-time'>('daily');
+    const [pokerBalance, setPokerBalance] = useState(0);
+
+    // Fetch Poker Balance
+    useEffect(() => {
+        const fetchPokerBalance = async () => {
+            if (!address) return;
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`);
+                const data = await res.json();
+                if (data.balance !== undefined) {
+                    setPokerBalance(data.balance);
+                }
+            } catch (err) {
+                console.error("Failed to fetch poker balance", err);
+            }
+        };
+        fetchPokerBalance();
+    }, [address]);
 
     // Dummy Data
     const leaderboardData = [
@@ -28,7 +46,7 @@ export default function LeaderboardPage() {
         <div className="min-h-screen bg-black text-white flex">
             <LobbySidebar
                 usdcBalance={usdcBalance}
-                pokerBalance={0}
+                pokerBalance={pokerBalance}
                 onDeposit={() => { }}
                 onCashout={() => { }}
             />
@@ -49,8 +67,8 @@ export default function LeaderboardPage() {
                                     key={t}
                                     onClick={() => setTimeframe(t)}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${timeframe === t
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
                                         }`}
                                 >
                                     {t}
@@ -63,10 +81,10 @@ export default function LeaderboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                         {leaderboardData.slice(0, 3).map((player, i) => (
                             <div key={i} className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col items-center ${i === 0
-                                    ? 'bg-gradient-to-b from-yellow-500/10 to-transparent border-yellow-500/30'
-                                    : i === 1
-                                        ? 'bg-gradient-to-b from-gray-400/10 to-transparent border-gray-400/30'
-                                        : 'bg-gradient-to-b from-orange-500/10 to-transparent border-orange-500/30'
+                                ? 'bg-gradient-to-b from-yellow-500/10 to-transparent border-yellow-500/30'
+                                : i === 1
+                                    ? 'bg-gradient-to-b from-gray-400/10 to-transparent border-gray-400/30'
+                                    : 'bg-gradient-to-b from-orange-500/10 to-transparent border-orange-500/30'
                                 }`}>
                                 <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mb-4 ${i === 0 ? 'bg-yellow-500 text-black' : i === 1 ? 'bg-gray-400 text-black' : 'bg-orange-500 text-black'
                                     }`}>

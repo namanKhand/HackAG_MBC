@@ -162,6 +162,38 @@ export class Table {
         this.winners = [];
         this.lastAggressorId = null;
 
+        // Deal cards
+        this.players.forEach(p => {
+            if (p && p.status === 'active' && p.chips > 0) {
+                p.startHandChips = p.chips; // Snapshot chips
+                p.cards = [this.deck.deal()!, this.deck.deal()!];
+                p.folded = false;
+                p.bet = 0;
+                p.handContribution = 0; // Reset contribution
+                p.isTurn = false;
+                p.hasActed = false;
+                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
+                p.stats.showCards = false;
+
+                // Update hands played
+                console.log(`[Table ${this.id}] Updating hands_played for ${p.name}`);
+                if (this.config.isRealMoney && p.address) {
+                    db.updateUserStats(p.address, { hands_played: 1 }, 'real');
+                } else if (!this.config.isRealMoney && p.accountId) {
+                    db.updateUserStats(p.accountId, { hands_played: 1 }, 'play');
+                }
+            } else if (p) {
+                p.cards = [];
+                p.folded = true;
+                p.bet = 0;
+                p.handContribution = 0;
+                p.isTurn = false;
+                p.hasActed = false;
+                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
+                p.stats.showCards = false;
+            }
+        });
+
         // WSOP / Standard Forward Moving Blinds Logic
         // 1. Move Dealer Button to next active player
         this.dealerIndex = this.nextActivePlayer(this.dealerIndex);
@@ -218,10 +250,12 @@ export class Table {
 
 
     advanceTurn() {
-        // Check for Early Win (everyone else folded)
-        const activePlayers = this.players.filter(p => p && !p.folded);
-        if (activePlayers.length === 1) {
-            this.endGameEarly(activePlayers[0]!);
+        // Check for Early Win (everyone else folded or sitting out)
+        // We consider a player "active in hand" if they are not folded AND their status is active.
+        const activeHandPlayers = this.players.filter(p => p && !p.folded && p.status === 'active');
+
+        if (activeHandPlayers.length === 1) {
+            this.endGameEarly(activeHandPlayers[0]!);
             return;
         }
 
