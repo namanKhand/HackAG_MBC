@@ -11,7 +11,6 @@ export default function Dashboard() {
     const { user, token, refreshUser } = useAuth();
     const router = useRouter();
     const [linking, setLinking] = useState(false);
-    const [linking, setLinking] = useState(false);
 
     const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ['accountStats', user?.id],
@@ -81,49 +80,47 @@ export default function Dashboard() {
                         <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
                         <p className="font-mono text-gray-400">Welcome, {user?.username}</p>
                     </div>
-            </div>
-        </header>
+                </header>
 
-                {/* Wallet Linking Section */ }
-    <div className="bg-gray-800/30 border border-gray-700 p-6 rounded-2xl mb-12 flex items-center justify-between">
-        <div>
-            <h3 className="text-xl font-bold mb-2">Connected Wallets</h3>
-            <div className="flex gap-2 flex-wrap">
-                {user?.wallets && user.wallets.length > 0 ? (
-                    user.wallets.map(w => (
-                        <span key={w} className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-mono border border-blue-800">
-                            {w.slice(0, 6)}...{w.slice(-4)}
-                        </span>
-                    ))
-                ) : (
-                    <p className="text-gray-500">No wallets linked yet.</p>
-                )}
-            </div>
-        </div>
-        <div>
-            {isConnected ? (
-                !isWalletLinked ? (
-                    <button
-                        onClick={linkWallet}
-                        disabled={linking}
-                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition disabled:opacity-50"
-                    >
-                        {linking ? 'Linking...' : 'Link Current Wallet'}
-                    </button>
-                ) : (
-                    <span className="text-green-400 font-medium flex items-center">
-                        ✓ Current Wallet Linked
-                    </span>
-                )
-            ) : (
-                <p className="text-yellow-400 text-sm">Connect wallet to link it</p>
-            )}
-        </div>
-    </div>
-                </div >
+                {/* Wallet Linking Section */}
+                <div className="bg-gray-800/30 border border-gray-700 p-6 rounded-2xl mb-12 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold mb-2">Connected Wallets</h3>
+                        <div className="flex gap-2 flex-wrap">
+                            {user?.wallets && user.wallets.length > 0 ? (
+                                user.wallets.map(w => (
+                                    <span key={w} className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-mono border border-blue-800">
+                                        {w.slice(0, 6)}...{w.slice(-4)}
+                                    </span>
+                                ))
+                            ) : (
+                                <p className="text-gray-500">No wallets linked yet.</p>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        {isConnected ? (
+                            !isWalletLinked ? (
+                                <button
+                                    onClick={linkWallet}
+                                    disabled={linking}
+                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition disabled:opacity-50"
+                                >
+                                    {linking ? 'Linking...' : 'Link Current Wallet'}
+                                </button>
+                            ) : (
+                                <span className="text-green-400 font-medium flex items-center">
+                                    ✓ Current Wallet Linked
+                                </span>
+                            )
+                        ) : (
+                            <p className="text-yellow-400 text-sm">Connect wallet to link it</p>
+                        )}
+                    </div>
+                </div>
 
-        {/* Stats Grid */ }
-        < div className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12" >
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-2xl">
                         <h3 className="text-gray-400 text-sm mb-1">Hands Played</h3>
                         <p className="text-3xl font-bold">{stats?.hands_played || 0}</p>
@@ -152,10 +149,10 @@ export default function Dashboard() {
                             {calculateStat(stats?.three_bet_count, stats?.three_bet_opportunity)}
                         </p>
                     </div>
-                </div >
+                </div>
 
-        {/* Game History */ }
-        < div className = "bg-gray-800/50 border border-gray-700 rounded-2xl p-8" >
+                {/* Game History */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8">
                     <h2 className="text-2xl font-bold mb-6">Hand History</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
@@ -190,8 +187,8 @@ export default function Dashboard() {
                             </tbody>
                         </table>
                     </div>
-                </div >
-            </div >
-        </div >
+                </div>
+            </div>
+        </div>
     );
 }
