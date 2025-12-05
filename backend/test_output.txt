@@ -1,0 +1,154 @@
+
+
+  WSOP Showdown Logic
+[Table test_table] Attempting to start game. Active players: 3
+[Table test_table] Seat 0: Player 1 (p1) - Status: active, Chips: 1000
+[Table test_table] Seat 1: Player 2 (p2) - Status: active, Chips: 1000
+[Table test_table] Seat 2: Player 3 (p3) - Status: active, Chips: 1000
+[Table test_table] Updating hands_played for Player 1 (RealMoney: false)
+[Table test_table] Could not update stats for Player 1 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 2 (RealMoney: false)
+[Table test_table] Could not update stats for Player 2 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 3 (RealMoney: false)
+[Table test_table] Could not update stats for Player 3 - Missing address/accountId
+[Table test_table] BB Seat 3 is empty/inactive. Skipping BB.
+[DEBUG] evaluateWinner: lastAggressorId=p2
+[DEBUG] startShowdownIndex=1
+[DEBUG] showdownOrder=Player 2, Player 3, Player 1
+[DEBUG] Player 2 shows (First)
+[DEBUG] Player 3 shows (Beats best)
+[DEBUG] Player 1 mucks (Loses)
+[Table test_table] Pot Distribution: Player 3 wins 10 chips from level 10
+[Table test_table] Winners: p3. Remaining Pot: 0
+P1 Stats: {
+  pfr: false,
+  vpip: false,
+  threeBet: false,
+  threeBetOpp: false,
+  showCards: false
+}
+P2 Stats: {
+  pfr: false,
+  vpip: false,
+  threeBet: false,
+  threeBetOpp: false,
+  showCards: true
+}
+P3 Stats: {
+  pfr: false,
+  vpip: false,
+  threeBet: false,
+  threeBetOpp: false,
+  showCards: true
+}
+    1) should show last aggressor first on river
+[Table test_table] Attempting to start game. Active players: 3
+[Table test_table] Seat 0: Player 1 (p1) - Status: active, Chips: 1000
+[Table test_table] Seat 1: Player 2 (p2) - Status: active, Chips: 1000
+[Table test_table] Seat 2: Player 3 (p3) - Status: active, Chips: 1000
+[Table test_table] Updating hands_played for Player 1 (RealMoney: false)
+[Table test_table] Could not update stats for Player 1 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 2 (RealMoney: false)
+[Table test_table] Could not update stats for Player 2 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 3 (RealMoney: false)
+[Table test_table] Could not update stats for Player 3 - Missing address/accountId
+[Table test_table] BB Seat 3 is empty/inactive. Skipping BB.
+[DEBUG] evaluateWinner: lastAggressorId=null
+[DEBUG] startShowdownIndex=0
+[DEBUG] showdownOrder=Player 1, Player 2, Player 3
+[DEBUG] Player 1 shows (First)
+[DEBUG] Player 2 mucks (Loses)
+[DEBUG] Player 3 mucks (Loses)
+[Table test_table] Pot Distribution: Player 3 wins 10 chips from level 10
+[Table test_table] Winners: p3. Remaining Pot: 0
+    2) should show in position order if no aggressor on river
+[Table test_table] Attempting to start game. Active players: 3
+[Table test_table] Seat 0: Player 1 (p1) - Status: active, Chips: 1000
+[Table test_table] Seat 1: Player 2 (p2) - Status: active, Chips: 1000
+[Table test_table] Seat 2: Player 3 (p3) - Status: active, Chips: 1000
+[Table test_table] Updating hands_played for Player 1 (RealMoney: false)
+[Table test_table] Could not update stats for Player 1 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 2 (RealMoney: false)
+[Table test_table] Could not update stats for Player 2 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 3 (RealMoney: false)
+[Table test_table] Could not update stats for Player 3 - Missing address/accountId
+[Table test_table] BB Seat 3 is empty/inactive. Skipping BB.
+[DEBUG] evaluateWinner: lastAggressorId=null
+[DEBUG] startShowdownIndex=0
+[DEBUG] showdownOrder=Player 1, Player 2, Player 3
+[DEBUG] Player 1 shows (First)
+[DEBUG] Player 2 shows (Beats best)
+[DEBUG] Player 3 shows (Beats best)
+[Table test_table] Pot Distribution: Player 3 wins 10 chips from level 10
+[Table test_table] Winners: p3. Remaining Pot: 0
+    3) should allow mucking if losing to shown hand
+[Table test_table] Attempting to start game. Active players: 3
+[Table test_table] Seat 0: Player 1 (p1) - Status: active, Chips: 1000
+[Table test_table] Seat 1: Player 2 (p2) - Status: active, Chips: 1000
+[Table test_table] Seat 2: Player 3 (p3) - Status: active, Chips: 1000
+[Table test_table] Updating hands_played for Player 1 (RealMoney: false)
+[Table test_table] Could not update stats for Player 1 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 2 (RealMoney: false)
+[Table test_table] Could not update stats for Player 2 - Missing address/accountId
+[Table test_table] Updating hands_played for Player 3 (RealMoney: false)
+[Table test_table] Could not update stats for Player 3 - Missing address/accountId
+[Table test_table] BB Seat 3 is empty/inactive. Skipping BB.
+[DEBUG] evaluateWinner: lastAggressorId=null
+[DEBUG] startShowdownIndex=0
+[DEBUG] showdownOrder=Player 1, Player 2, Player 3
+[DEBUG] Player 1 shows (First)
+[DEBUG] Player 2 shows (All-in)
+[DEBUG] Player 3 shows (Beats best)
+[Table test_table] Pot Distribution: Player 3 wins 10 chips from level 10
+[Table test_table] Winners: p3. Remaining Pot: 0
+[Table test_table] Player Player 2 busted!
+    4) should force show for all-in players
+
+
+  0 passing (11ms)
+  4 failing
+
+  1) WSOP Showdown Logic
+       should show last aggressor first on river:
+
+      AssertionError: expected true to be false
+      + expected - actual
+
+      -true
+      +false
+      
+      at Context.<anonymous> (test/showdown.test.ts:79:56)
+      at processImmediate (node:internal/timers:504:21)
+
+  2) WSOP Showdown Logic
+       should show in position order if no aggressor on river:
+
+      AssertionError: expected false to be true
+      + expected - actual
+
+      -false
+      +true
+      
+      at Context.<anonymous> (test/showdown.test.ts:114:56)
+      at processImmediate (node:internal/timers:504:21)
+
+  3) WSOP Showdown Logic
+       should allow mucking if losing to shown hand:
+
+      AssertionError: expected true to be false
+      + expected - actual
+
+      -true
+      +false
+      
+      at Context.<anonymous> (test/showdown.test.ts:147:56)
+      at processImmediate (node:internal/timers:504:21)
+
+  4) WSOP Showdown Logic
+       should force show for all-in players:
+     TypeError: Cannot read properties of null (reading 'stats')
+      at Context.<anonymous> (test/showdown.test.ts:182:34)
+      at processImmediate (node:internal/timers:504:21)
+
+
+

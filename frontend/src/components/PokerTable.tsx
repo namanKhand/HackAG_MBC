@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { useBalance } from 'wagmi';
 import { USDC_ADDRESS } from '../constants';
 
+import { useSettings } from '../context/SettingsContext';
+
 interface Card {
     rank: string;
     suit: string;
@@ -42,7 +44,7 @@ interface TableState {
     minRaise?: number;
 }
 
-const CardUI = ({ card }: { card: Card | null }) => {
+const CardUI = ({ card, fourColorDeck = false }: { card: Card | null, fourColorDeck?: boolean }) => {
     if (!card) {
         return (
             <div className="w-14 h-20 bg-blue-900 rounded-lg border-2 border-white/50 flex items-center justify-center shadow-md transform hover:scale-105 transition-transform">
@@ -51,14 +53,24 @@ const CardUI = ({ card }: { card: Card | null }) => {
         );
     }
 
-    const isRed = card.suit === 'h' || card.suit === 'd';
+    let suitColor = 'text-black';
+    if (fourColorDeck) {
+        if (card.suit === 'h') suitColor = 'text-red-600'; // Hearts Red
+        else if (card.suit === 'd') suitColor = 'text-blue-600'; // Diamonds Blue
+        else if (card.suit === 'c') suitColor = 'text-green-600'; // Clubs Green
+        else if (card.suit === 's') suitColor = 'text-black'; // Spades Black
+    } else {
+        const isRed = card.suit === 'h' || card.suit === 'd';
+        suitColor = isRed ? 'text-red-600' : 'text-black';
+    }
+
     const suitSymbol = { h: '♥', d: '♦', c: '♣', s: '♠' }[card.suit];
 
     return (
         <div className="w-14 h-20 bg-white rounded-lg text-black flex flex-col items-center justify-center border border-gray-300 shadow-md relative transform hover:scale-105 transition-transform">
-            <span className={`text-sm font-bold absolute top-1 left-1 ${isRed ? 'text-red-600' : 'text-black'}`}>{card.rank}</span>
-            <span className={`text-2xl leading-none ${isRed ? 'text-red-600' : 'text-black'}`}>{suitSymbol}</span>
-            <span className={`text-sm font-bold absolute bottom-1 right-1 rotate-180 ${isRed ? 'text-red-600' : 'text-black'}`}>{card.rank}</span>
+            <span className={`text-sm font-bold absolute top-1 left-1 ${suitColor}`}>{card.rank}</span>
+            <span className={`text-2xl leading-none ${suitColor}`}>{suitSymbol}</span>
+            <span className={`text-sm font-bold absolute bottom-1 right-1 rotate-180 ${suitColor}`}>{card.rank}</span>
         </div>
     );
 };
@@ -83,6 +95,8 @@ export default function PokerTable({
     const { address } = useAccount();
     const { token } = useAuth();
     const router = useRouter();
+    const { settings } = useSettings(); // Use Settings Context
+
     const { data: balanceData } = useBalance({
         address: address,
         token: USDC_ADDRESS as `0x${string}`,
@@ -284,6 +298,16 @@ export default function PokerTable({
         return positions[relativeIndex];
     };
 
+    // Table Color Logic
+    const getTableColorClass = () => {
+        switch (settings.tableColor) {
+            case 'blue': return 'from-blue-900/40 to-black border-blue-900/20';
+            case 'red': return 'from-red-900/40 to-black border-red-900/20';
+            case 'black': return 'from-zinc-900/40 to-black border-zinc-900/20';
+            case 'green': default: return 'from-green-900/40 to-black border-green-900/20';
+        }
+    };
+
     return (
         <div className="w-full max-w-7xl p-4 mx-auto font-sans">
             {table && (
@@ -383,8 +407,8 @@ export default function PokerTable({
                     {/* Table Area */}
                     <div className="relative h-[600px] bg-gradient-to-b from-gray-900 to-black rounded-[200px] border-[20px] border-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center mx-auto mb-32 mt-12 w-[90%]">
 
-                        {/* Red Felt Gradient */}
-                        <div className="absolute inset-4 rounded-[180px] bg-gradient-to-br from-red-900/40 to-black border border-red-900/20 shadow-inner"></div>
+                        {/* Felt Gradient - Dynamic Color */}
+                        <div className={`absolute inset-4 rounded-[180px] bg-gradient-to-br ${getTableColorClass()} shadow-inner transition-colors duration-500`}></div>
 
                         {/* Center Logo (Base) */}
                         <div className="absolute opacity-20 pointer-events-none">
@@ -396,7 +420,7 @@ export default function PokerTable({
                         {/* Community Cards */}
                         <div className="flex gap-3 z-10 p-6 bg-black/30 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl transform -translate-y-8">
                             {table.communityCards.map((card, i) => (
-                                <CardUI key={i} card={card} />
+                                <CardUI key={i} card={card} fourColorDeck={settings.fourColorDeck} />
                             ))}
                             {Array(5 - table.communityCards.length).fill(null).map((_, i) => (
                                 <div key={`empty-${i}`} className="w-14 h-20 border-2 border-white/5 rounded-lg bg-white/5" />
@@ -419,23 +443,31 @@ export default function PokerTable({
                             return (
                                 <div key={player.id} className={`absolute ${positionClass} flex flex-col items-center transition-all duration-500 ease-in-out z-30`}>
                                     {/* Avatar */}
-                                    <div className={`relative w-20 h-20 rounded-full flex items-center justify-center border-4 
-                                        ${player.isTurn ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-110' :
-                                            table.winners?.includes(player.id) ? 'border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.8)] scale-110 ring-4 ring-yellow-200 animate-pulse' :
-                                                'border-gray-700 bg-gray-900'} 
-                                        ${player.folded || player.status === 'sitting_out' ? 'opacity-40 grayscale' : ''}
-                                        transition-all duration-300 z-20 group`}>
+                                    {settings.showAvatars && (
+                                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center border-4 
+                                            ${player.isTurn ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-110' :
+                                                table.winners?.includes(player.id) ? 'border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.8)] scale-110 ring-4 ring-yellow-200 animate-pulse' :
+                                                    'border-gray-700 bg-gray-900'} 
+                                            ${player.folded || player.status === 'sitting_out' ? 'opacity-40 grayscale' : ''}
+                                            transition-all duration-300 z-20 group`}>
 
-                                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-black opacity-90"></div>
-                                        <span className="relative text-xs text-center text-white font-bold px-2 truncate w-full z-10">{player.name}</span>
+                                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-black opacity-90"></div>
+                                            <span className="relative text-xs text-center text-white font-bold px-2 truncate w-full z-10">{player.name}</span>
 
-                                        {/* Dealer Button */}
-                                        {isDealer && (
-                                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-black font-bold text-xs border-2 border-gray-300 shadow-lg z-30">
-                                                D
-                                            </div>
-                                        )}
-                                    </div>
+                                            {/* Dealer Button */}
+                                            {isDealer && (
+                                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-black font-bold text-xs border-2 border-gray-300 shadow-lg z-30">
+                                                    D
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {!settings.showAvatars && (
+                                        <div className="mb-2">
+                                            <span className="text-xs text-center text-white font-bold px-2 py-1 bg-black/60 rounded-lg border border-white/10">{player.name}</span>
+                                            {isDealer && <span className="ml-1 text-xs bg-white text-black px-1 rounded-full font-bold">D</span>}
+                                        </div>
+                                    )}
 
                                     {/* Chips & Bet */}
                                     <div className="bg-black/80 px-3 py-1 rounded-full -mt-2 text-xs text-white border border-white/10 backdrop-blur-md z-30 font-mono shadow-lg relative">
@@ -454,7 +486,7 @@ export default function PokerTable({
                                             {player.cards ? (
                                                 player.cards.map((card, ci) => (
                                                     <div key={ci} className="shadow-xl">
-                                                        <CardUI card={card} />
+                                                        <CardUI card={card} fourColorDeck={settings.fourColorDeck} />
                                                     </div>
                                                 ))
                                             ) : (
@@ -488,7 +520,7 @@ export default function PokerTable({
                                     {me.cards ? (
                                         me.cards.map((card, ci) => (
                                             <div key={ci} className="shadow-lg transform hover:-translate-y-1 transition-transform">
-                                                <CardUI card={card} />
+                                                <CardUI card={card} fourColorDeck={settings.fourColorDeck} />
                                             </div>
                                         ))
                                     ) : (
@@ -601,7 +633,7 @@ export default function PokerTable({
                                     </div>
                                     <div className="flex gap-2 scale-75 md:scale-100 origin-center">
                                         {rank.cards.map((card, ci) => (
-                                            <CardUI key={ci} card={card} />
+                                            <CardUI key={ci} card={card} fourColorDeck={settings.fourColorDeck} />
                                         ))}
                                     </div>
                                 </div>

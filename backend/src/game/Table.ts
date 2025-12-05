@@ -27,7 +27,9 @@ export interface Player {
         vpip: boolean;
         threeBet: boolean;
         threeBetOpp: boolean;
+        showCards?: boolean;
     };
+    pendingLeave?: boolean; // If true, player will be removed after hand
 }
 
 export interface TableConfig {
@@ -51,6 +53,7 @@ export class Table {
     minRaise: number;
     dealerIndex: number;
     turnIndex: number;
+    lastAggressorId: string | null = null;
     gameActive: boolean;
     stage: 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
     smallBlind: number = 10;
@@ -157,6 +160,7 @@ export class Table {
         this.minRaise = this.bigBlind;
         this.stage = 'preflop';
         this.winners = [];
+        this.lastAggressorId = null;
 
         // Move Dealer Button
         this.dealerIndex = this.nextActivePlayer(this.dealerIndex);
@@ -172,6 +176,7 @@ export class Table {
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
+                p.stats.showCards = false;
 
                 // Update hands played
                 console.log(`[Table ${this.id}] Updating hands_played for ${p.name} (RealMoney: ${this.config.isRealMoney})`);
@@ -191,33 +196,63 @@ export class Table {
                 p.isTurn = false;
                 p.hasActed = false;
                 p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
+                p.stats.showCards = false;
             }
         });
 
         // Post Blinds
-        const sbIndex = this.nextActivePlayer(this.dealerIndex);
-        const bbIndex = this.nextActivePlayer(sbIndex);
+        // Fixed offsets for blinds (Empty Blind Logic)
+        const sbSeat = (this.dealerIndex + 1) % 6;
+        const bbSeat = (this.dealerIndex + 2) % 6;
 
         // SB
-        const sbPlayer = this.players[sbIndex]!;
-        const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
-        sbPlayer.chips = this.floor(sbPlayer.chips - sbAmount);
-        sbPlayer.bet = sbAmount;
-        sbPlayer.handContribution += sbAmount;
-        this.pot += sbAmount;
+        const sbPlayer = this.players[sbSeat];
+        if (sbPlayer && sbPlayer.status === 'active' && sbPlayer.chips > 0) {
+            const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
+            sbPlayer.chips = this.floor(sbPlayer.chips - sbAmount);
+            sbPlayer.bet = sbAmount;
+            sbPlayer.handContribution += sbAmount;
+            this.pot += sbAmount;
+        } else {
+            console.log(`[Table ${this.id}] SB Seat ${sbSeat} is empty/inactive. Skipping SB.`);
+        }
 
         // BB
-        const bbPlayer = this.players[bbIndex]!;
-        const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
-        bbPlayer.chips = this.floor(bbPlayer.chips - bbAmount);
-        bbPlayer.bet = bbAmount;
-        bbPlayer.handContribution += bbAmount;
-        this.pot += bbAmount;
-        this.currentBet = this.bigBlind;
+        const bbPlayer = this.players[bbSeat];
+        if (bbPlayer && bbPlayer.status === 'active' && bbPlayer.chips > 0) {
+            const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
+            bbPlayer.chips = this.floor(bbPlayer.chips - bbAmount);
+            bbPlayer.bet = bbAmount;
+            bbPlayer.handContribution += bbAmount;
+            this.pot += bbAmount;
+            this.currentBet = this.bigBlind;
+        } else {
+            console.log(`[Table ${this.id}] BB Seat ${bbSeat} is empty/inactive. Skipping BB.`);
+            // Even if BB is empty, the min raise should be based on the blind structure?
+            // Or should it be 0? Standard rules: if no BB, betting starts at 0?
+            // Usually "Dead Blind" means the money is dead, but here we just skip it.
+            // If no BB, currentBet is 0 (or SB amount).
+            // Let's assume currentBet becomes the highest bet so far (SB or 0).
+            // But we need to enforce the minimum bet size for the first player.
+            // Let's keep minRaise = bigBlind.
+        }
+
+        // Ensure minRaise is at least bigBlind (standard opening)
         this.minRaise = this.bigBlind;
 
-        // Set turn to UTG (player after BB)
-        this.turnIndex = this.nextActivePlayer(bbIndex);
+        // If BB posted, currentBet is BB. If not, it's SB or 0.
+        // We need to ensure the first player can call/raise properly.
+        // If BB is missing, usually the UTG still has to "call" the big blind amount to enter?
+        // Or is it just open?
+        // User said "make it an empty blind".
+        // Let's stick to: currentBet is whatever is on the table.
+        // But if currentBet < bigBlind, we should probably enforce min bet?
+        // Let's leave currentBet as is (max of bets).
+        // If BB is missing, currentBet might be SB (e.g. 10) or 0.
+
+        // Set turn to player after BB seat (UTG)
+        // We start looking for the next active player starting from the BB seat.
+        this.turnIndex = this.nextActivePlayer(bbSeat);
         if (this.players[this.turnIndex]) {
             this.players[this.turnIndex]!.isTurn = true;
         }
@@ -362,6 +397,10 @@ export class Table {
             player.stats.threeBetOpp = true;
         }
 
+        if (action === 'raise') {
+            this.lastAggressorId = player.id;
+        }
+
         player.isTurn = false;
         this.advanceTurn();
         return true;
@@ -370,6 +409,7 @@ export class Table {
     nextStreet() {
         this.currentBet = 0;
         this.minRaise = this.bigBlind;
+        this.lastAggressorId = null;
         this.players.forEach(p => {
             if (p) {
                 p.bet = 0;
@@ -461,6 +501,71 @@ export class Table {
             hand.player = p;
             return hand;
         });
+
+        // --- Showdown Logic ---
+        // Determine who shows first
+        let startShowdownIndex = -1;
+
+        if (this.lastAggressorId) {
+            const aggressorIndex = this.players.findIndex(p => p && p.id === this.lastAggressorId);
+            if (aggressorIndex !== -1 && this.players[aggressorIndex]?.status === 'active' && !this.players[aggressorIndex]?.folded) {
+                startShowdownIndex = aggressorIndex;
+            }
+        }
+
+        if (startShowdownIndex === -1) {
+            // No aggressor or aggressor folded (shouldn't happen in showdown but safety)
+            // Start from first active player after button
+            startShowdownIndex = this.nextActivePlayer(this.dealerIndex);
+        }
+
+        // Create an ordered list of players starting from startShowdownIndex
+        const showdownOrder: Player[] = [];
+        let currentIndex = startShowdownIndex;
+        for (let i = 0; i < this.players.length; i++) {
+            const p = this.players[currentIndex];
+            if (p && !p.folded && p.status === 'active') {
+                showdownOrder.push(p);
+            }
+            currentIndex = (currentIndex + 1) % this.players.length;
+        }
+
+        let bestHandSoFar: any = null;
+
+        showdownOrder.forEach(p => {
+            const pHand: any = playerHands.find((h: any) => h.player.id === p.id);
+            if (!pHand) return;
+
+            let shouldShow = false;
+
+            // Rule: All-in players always show (simplification for anti-collusion/integrity)
+            if (p.chips === 0) {
+                shouldShow = true;
+            }
+            // Rule: First player to act in showdown must show
+            else if (!bestHandSoFar) {
+                shouldShow = true;
+            }
+            // Rule: If you beat the current best hand, you must show (to win)
+            else if (pHand.compare(bestHandSoFar) < 0) { // compare returns -1 if pHand is better (smaller rank)
+                shouldShow = true;
+            }
+            // Rule: If you lose, you can muck (don't show)
+            else {
+                shouldShow = false;
+            }
+
+            if (shouldShow) {
+                p.stats.showCards = true;
+                // Update best hand if this is the new best (or the first one)
+                if (!bestHandSoFar || pHand.compare(bestHandSoFar) < 0) {
+                    bestHandSoFar = pHand;
+                }
+            } else {
+                p.stats.showCards = false;
+            }
+        });
+        // --- End Showdown Logic ---
 
         // 3. Side Pot Logic
         // Sort hands best first
@@ -643,7 +748,10 @@ export class Table {
         state.deck = undefined; // Hide deck
         state.players = state.players.map((p: any) => {
             if (!p) return null;
-            if (p.id !== playerId && !this.stage.includes('showdown') && this.turnIndex !== -1) {
+            // Show cards if:
+            // 1. It's the player themselves
+            // 2. showCards is true
+            if (p.id !== playerId && !p.stats?.showCards) {
                 p.cards = null; // Hide cards
             }
             return p;

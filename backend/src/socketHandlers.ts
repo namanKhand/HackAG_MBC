@@ -214,7 +214,8 @@ export function setupSocketHandlers(io: Server) {
                         isTurn: false,
                         hasActed: false,
                         status: 'active',
-                        stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }
+                        stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false },
+                        pendingLeave: false
                     };
 
                     if (table.addPlayer(player)) {
@@ -254,7 +255,8 @@ export function setupSocketHandlers(io: Server) {
                 isTurn: false,
                 hasActed: false,
                 status: 'active',
-                stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false }
+                stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false },
+                pendingLeave: false
             };
 
             if (table.addPlayer(player)) {
@@ -297,7 +299,35 @@ export function setupSocketHandlers(io: Server) {
 
             // Check if game ended
             if (!table.gameActive) {
-                console.log(`Game ended on table ${tableId}. Restarting in 5s...`);
+                console.log(`Game ended on table ${tableId}. Processing pending leaves and restarting in 5s...`);
+
+                // Process Pending Leaves
+                const pendingLeavers = table.players.filter(p => p && p.pendingLeave);
+                for (const p of pendingLeavers) {
+                    if (p) {
+                        console.log(`Processing delayed leave for ${p.name}`);
+                        // Re-use leave logic (extract to helper if possible, but for now copy-paste safe parts)
+                        if (p.sessionId) {
+                            await db.updateTableSession(p.sessionId, p.chips);
+                        }
+                        if (p.chips > 0 && p.address && table.config.isRealMoney) {
+                            const amount = p.chips;
+                            p.chips = 0;
+                            await db.updateUserBalance(p.address, amount);
+                            console.log(`Saved ${amount} chips to balance for ${p.name}`);
+                        }
+                        table.removePlayer(p.id);
+                    }
+                }
+
+                // Broadcast update after removals
+                if (pendingLeavers.length > 0) {
+                    const sockets = await io.in(tableId).fetchSockets();
+                    for (const s of sockets) {
+                        s.emit("table_state", table.getForPlayer(s.id));
+                    }
+                }
+
                 setTimeout(async () => {
                     console.log(`Restarting game on table ${tableId}`);
                     table.startGame();
@@ -353,6 +383,14 @@ export function setupSocketHandlers(io: Server) {
             if (table) {
                 const player = table.players.find(p => p?.id === socket.id);
                 if (player) {
+                    // Delayed Leave Logic
+                    if (table.gameActive && player.status === 'active' && !player.folded) {
+                        player.pendingLeave = true;
+                        socket.emit('error', 'You will leave the table automatically after this hand ends.'); // Using error for toast, or could use new event
+                        return;
+                    }
+
+                    // Immediate Leave Logic
                     // Update Session
                     if (player.sessionId) {
                         await db.updateTableSession(player.sessionId, player.chips);

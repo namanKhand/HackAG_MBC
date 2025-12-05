@@ -11,8 +11,7 @@ const config = getDefaultConfig({
     appName: 'Base Poker',
     projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '7b97a0db94bb11395dfef82be865674a',
     chains: [base],
-    ssr: true,
-
+    ssr: false,
 });
 
 console.log("Providers file evaluated");
