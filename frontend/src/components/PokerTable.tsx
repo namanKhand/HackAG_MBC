@@ -348,12 +348,20 @@ export default function PokerTable({
                                 Rankings ?
                             </button>
                             {!me && (
-                                <button
-                                    onClick={() => setShowBuyInModal(true)}
-                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg animate-pulse"
-                                >
-                                    Join Table
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => router.push('/lobby')}
+                                        className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+                                    >
+                                        Back to Lobby
+                                    </button>
+                                    <button
+                                        onClick={() => setShowBuyInModal(true)}
+                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg animate-pulse"
+                                    >
+                                        Join Table
+                                    </button>
+                                </div>
                             )}
                             {me && (
                                 <>
@@ -572,7 +580,19 @@ export default function PokerTable({
                                             )}
 
                                             {me.chips + me.bet > table.currentBet && (
-                                                <div className="flex flex-col gap-1 items-center bg-black/40 p-1 rounded-xl border border-white/5">
+                                                <div className="flex flex-col gap-2 items-center bg-black/40 p-2 rounded-xl border border-white/5">
+                                                    <div className="flex items-center gap-2 w-full">
+                                                        <span className="text-green-400 font-bold">$</span>
+                                                        <input
+                                                            type="number"
+                                                            min={Math.min((table.currentBet + (table.minRaise || 20)), me.chips + me.bet)}
+                                                            max={me.chips + me.bet}
+                                                            step={minBuyIn < 1 ? "0.01" : "1"}
+                                                            value={raiseAmount}
+                                                            onChange={(e) => setRaiseAmount(Number(e.target.value))}
+                                                            className="w-20 bg-black/50 border border-white/10 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-green-500"
+                                                        />
+                                                    </div>
                                                     <input
                                                         type="range"
                                                         min={Math.min((table.currentBet + (table.minRaise || 20)), me.chips + me.bet)}
@@ -604,7 +624,7 @@ export default function PokerTable({
                                                 onClick={() => setPreAction(preAction === 'callAny' ? 'none' : 'callAny')}
                                                 className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${preAction === 'callAny' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                                             >
-                                                Call Any
+                                                Call
                                             </button>
                                         </div>
                                     )}
