@@ -112,7 +112,7 @@ export default function PokerTable({
     // Fetch Chips Balance
     // Fetch Chips Balance
     // Fetch Chips Balance
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     const fetchBalance = useCallback(() => {
         if (address) {
             fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`)

@@ -2,7 +2,6 @@
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import { coinbaseWallet } from '@rainbow-me/rainbowkit/wallets';
 import { WagmiProvider } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
@@ -13,15 +12,7 @@ const config = getDefaultConfig({
     projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '7b97a0db94bb11395dfef82be865674a',
     chains: [base],
     ssr: true,
-    wallets: [{
-        groupName: 'Recommended',
-        wallets: [
-            coinbaseWallet.wallets[0]({
-                appName: 'Base Poker',
-                preference: 'smartWalletOnly', // Force Smart Wallet
-            })
-        ]
-    }],
+
 });
 
 console.log("Providers file evaluated");

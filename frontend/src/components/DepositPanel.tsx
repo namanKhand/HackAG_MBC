@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react-hooks/rules-of-hooks */
+
 import React, { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi';
 import { parseUnits } from 'viem';
@@ -111,6 +110,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
     }, [address, fetchAccountBalance]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchAccountBalance();
         const interval = setInterval(fetchAccountBalance, 10000);
         return () => clearInterval(interval);
