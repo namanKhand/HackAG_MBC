@@ -68,8 +68,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
 
     const toggleSetting = (key: keyof SettingsState) => {
-        // @ts-ignore
-        setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+        setSettings(prev => {
+            const value = prev[key];
+            if (typeof value === 'boolean') {
+                return { ...prev, [key]: !value };
+            }
+            return prev;
+        });
     };
 
     return (

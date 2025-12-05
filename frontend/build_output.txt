@@ -1,0 +1,79 @@
+
+> frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 15.0.3
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./src/app/dashboard/page.tsx
+12:11  Warning: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+15:37  Warning: 'statsLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+28:39  Warning: 'historyLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+61:18  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+167:135  Warning: 'i' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/leaderboard/page.tsx
+5:18  Warning: 'Flame' is defined but never used.  @typescript-eslint/no-unused-vars
+5:25  Warning: 'History' is defined but never used.  @typescript-eslint/no-unused-vars
+5:34  Warning: 'Medal' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/BuyInModal.tsx
+115:13  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+
+./src/components/CashoutPanel.tsx
+60:18  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/LobbySidebar.tsx
+2:51  Warning: 'User' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/context/SettingsContext.tsx
+51:17  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/building-your-application/configuring/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/9) ...
+Providers file evaluated
+{"level":50,"time":1764966606883,"pid":75711,"hostname":"Taranveers-MacBook-Pro.local","context":"client","msg":"this.localStorage.getItem is not a function"}
+{"level":50,"time":1764966606884,"pid":75711,"hostname":"Taranveers-MacBook-Pro.local","context":"client","msg":"this.localStorage.getItem is not a function"}
+{"level":50,"time":1764966606883,"pid":75711,"hostname":"Taranveers-MacBook-Pro.local","name":"core","context":"core","msg":"this.localStorage.getItem is not a function"}
+
+{"level":50,"time":1764966606883,"pid":75711,"hostname":"Taranveers-MacBook-Pro.local","name":"core","context":"core","msg":"this.localStorage.getItem is not a function"}
+
+(node:75711) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+TypeError: this.localStorage.getItem is not a function
+    at I.getItem (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:11:20772)
+    at D.getItem (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:11:21812)
+    at async aS.init (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:10:79919)
+TypeError: this.localStorage.getItem is not a function
+    at I.getItem (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:11:20772)
+    at D.getItem (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:11:21812)
+    at async aS.init (/Users/taranveersingh/HackAG_MBC/frontend/.next/server/chunks/7969.js:10:79919)
+   Generating static pages (2/9) 
+   Generating static pages (4/9) 
+   Generating static pages (6/9) 
+ ✓ Generating static pages (9/9)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    1.53 kB         113 kB
+├ ○ /_not-found                          906 B           104 kB
+├ ○ /dashboard                           2.34 kB         116 kB
+├ ○ /leaderboard                         3.94 kB         315 kB
+├ ○ /lobby                               10.9 kB         322 kB
+├ ○ /settings                            4.68 kB         315 kB
+└ ƒ /table/[id]                          19.6 kB         178 kB
++ First Load JS shared by all            103 kB
+  ├ chunks/1517-f7209239ad6e6a50.js      45.8 kB
+  ├ chunks/4bd1b696-e619cd7f00f87b15.js  52.5 kB
+  └ other shared chunks (total)          4.46 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

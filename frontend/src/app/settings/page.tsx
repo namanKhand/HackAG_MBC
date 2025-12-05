@@ -68,8 +68,7 @@ export default function SettingsPage() {
                                         {['green', 'blue', 'red', 'black'].map(color => (
                                             <button
                                                 key={color}
-                                                // @ts-ignore
-                                                onClick={() => updateSetting('tableColor', color)}
+                                                onClick={() => updateSetting('tableColor', color as 'green' | 'blue' | 'red' | 'black')}
                                                 className={`w-12 h-12 rounded-full border-2 transition-all ${settings.tableColor === color ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'
                                                     }`}
                                                 style={{ backgroundColor: color === 'black' ? '#18181b' : color === 'green' ? '#15803d' : color === 'blue' ? '#1d4ed8' : '#b91c1c' }}
