@@ -39,9 +39,10 @@ const VAULT_ABI = [
 
 interface DepositPanelProps {
     className?: string;
+    onSuccess?: () => void;
 }
 
-export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
+export const DepositPanel: React.FC<DepositPanelProps> = ({ className, onSuccess }) => {
     const { address } = useAccount();
     const [amount, setAmount] = useState<string>('');
     const [step, setStep] = useState<'input' | 'approving' | 'depositing' | 'verifying'>('input');
@@ -98,6 +99,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
                 setAmount('');
                 setStep('input');
                 fetchAccountBalance();
+                if (onSuccess) onSuccess();
             } else {
                 setMessage({ type: 'error', text: "Verification failed. Please contact support." });
                 setStep('input');
@@ -107,7 +109,7 @@ export const DepositPanel: React.FC<DepositPanelProps> = ({ className }) => {
             setMessage({ type: 'error', text: "Verification error. Please contact support." });
             setStep('input');
         }
-    }, [address, fetchAccountBalance]);
+    }, [address, fetchAccountBalance, onSuccess]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect

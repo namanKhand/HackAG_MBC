@@ -25,6 +25,26 @@ function LobbyContent() {
     const [isBuyInOpen, setIsBuyInOpen] = useState(false);
     const [showDeposit, setShowDeposit] = useState(false);
     const [showCashout, setShowCashout] = useState(false);
+    const [pokerBalance, setPokerBalance] = useState(0);
+
+    // Fetch Poker Balance
+    const fetchPokerBalance = async () => {
+        if (!address) return;
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/balance/${address}`);
+            const data = await res.json();
+            if (data.balance !== undefined) {
+                setPokerBalance(data.balance);
+            }
+        } catch (err) {
+            console.error("Failed to fetch poker balance", err);
+        }
+    };
+
+    // Initial Fetch
+    useMemo(() => {
+        fetchPokerBalance();
+    }, [address]);
 
     // Filter State
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -42,6 +62,7 @@ function LobbyContent() {
 
     const handleBuyInSuccess = (amount: number, txHash: string) => {
         setIsBuyInOpen(false);
+        fetchPokerBalance(); // Refresh balance after buy-in
         if (selectedTable) {
             router.push(`/table/${selectedTable.id}?mode=real&buyIn=${amount}&tx=${txHash}`);
         }
@@ -71,7 +92,7 @@ function LobbyContent() {
             {/* Sidebar */}
             <LobbySidebar
                 usdcBalance={usdcBalance}
-                pokerBalance={0}
+                pokerBalance={pokerBalance}
                 onDeposit={() => setShowDeposit(true)}
                 onCashout={() => setShowCashout(true)}
             />
@@ -196,7 +217,7 @@ function LobbyContent() {
                         >
                             Close ✕
                         </button>
-                        <DepositPanel />
+                        <DepositPanel onSuccess={fetchPokerBalance} />
                     </div>
                 </div>
             )}
