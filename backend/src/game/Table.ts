@@ -632,6 +632,7 @@ export class Table {
             }
         });
 
+        this.pot = 0;
         this.gameActive = false;
     }
 
