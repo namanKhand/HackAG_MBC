@@ -101,7 +101,9 @@ export class Table {
         // Restore totalBuyIn from persistent ledger
         const uniqueId = this.config.isRealMoney ? player.address : player.name;
         if (uniqueId && this.ledger[uniqueId]) {
-            player.totalBuyIn = this.ledger[uniqueId];
+            // Add current buy-in to historical total
+            player.totalBuyIn += this.ledger[uniqueId];
+            this.ledger[uniqueId] = player.totalBuyIn;
         } else {
             // Initialize if new
             if (uniqueId) this.ledger[uniqueId] = player.totalBuyIn;
