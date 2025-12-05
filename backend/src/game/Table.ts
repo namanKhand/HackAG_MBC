@@ -79,7 +79,6 @@ export class Table {
         this.deck = new Deck();
         this.communityCards = [];
         this.pot = 0;
-        this.pot = 0;
         this.currentBet = 0;
         this.minRaise = 0;
         this.dealerIndex = 0;
@@ -90,9 +89,9 @@ export class Table {
         this.ledger = {};
     }
 
-    // Helper for 3-decimal rounding
-    floor3(num: number): number {
-        return Math.floor(num * 1000) / 1000;
+    // Helper for 2-decimal rounding
+    floor(num: number): number {
+        return Math.floor(num * 100) / 100;
     }
 
     addPlayer(player: Player): boolean {
@@ -110,7 +109,7 @@ export class Table {
 
         player.seat = seat;
         player.handContribution = 0; // Initialize
-        player.chips = this.floor3(player.chips); // Round chips
+        player.chips = this.floor(player.chips); // Round chips
         this.players[seat] = player;
         return true;
     }
@@ -151,7 +150,6 @@ export class Table {
         this.deck.reset();
         this.deck.shuffle();
         this.communityCards = [];
-        this.pot = 0;
         this.pot = 0;
         this.currentBet = 0;
         this.minRaise = this.bigBlind;
@@ -201,7 +199,7 @@ export class Table {
         // SB
         const sbPlayer = this.players[sbIndex]!;
         const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
-        sbPlayer.chips = this.floor3(sbPlayer.chips - sbAmount);
+        sbPlayer.chips = this.floor(sbPlayer.chips - sbAmount);
         sbPlayer.bet = sbAmount;
         sbPlayer.handContribution += sbAmount;
         this.pot += sbAmount;
@@ -209,10 +207,9 @@ export class Table {
         // BB
         const bbPlayer = this.players[bbIndex]!;
         const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
-        bbPlayer.chips = this.floor3(bbPlayer.chips - bbAmount);
+        bbPlayer.chips = this.floor(bbPlayer.chips - bbAmount);
         bbPlayer.bet = bbAmount;
         bbPlayer.handContribution += bbAmount;
-        this.pot += bbAmount;
         this.pot += bbAmount;
         this.currentBet = this.bigBlind;
         this.minRaise = this.bigBlind;
@@ -278,7 +275,7 @@ export class Table {
             let contribution = 0;
             if (player.chips >= toCall) {
                 contribution = toCall;
-                player.chips = this.floor3(player.chips - toCall);
+                player.chips = this.floor(player.chips - toCall);
                 player.bet += toCall;
             } else {
                 // All-in call
@@ -303,8 +300,7 @@ export class Table {
             } else if (player.chips >= diff) {
                 // Normal raise or exact all-in
                 contribution = diff;
-                player.chips = this.floor3(player.chips - diff);
-                player.bet = totalBet;
+                player.chips = this.floor(player.chips - diff);
                 player.bet = totalBet;
                 if (totalBet > this.currentBet) {
                     const raiseAmount = totalBet - this.currentBet;
@@ -412,8 +408,8 @@ export class Table {
         console.log(`[Table ${this.id}] Early Win for ${winner.name}. Pot: ${this.pot}`);
 
         // Give entire pot to winner
-        const winAmount = this.floor3(this.pot);
-        winner.chips = this.floor3(winner.chips + winAmount);
+        const winAmount = this.floor(this.pot);
+        winner.chips = this.floor(winner.chips + winAmount);
         this.ledger[winner.id] = (this.ledger[winner.id] || 0) + winAmount;
 
         this.winners = [winner.id];
@@ -522,8 +518,8 @@ export class Table {
                     // ... give remainder to first player.
 
                     // Let's stick to simple floor for now to avoid creating chips
-                    const winAmount = this.floor3(share);
-                    w.player.chips = this.floor3(w.player.chips + winAmount);
+                    const winAmount = this.floor(share);
+                    w.player.chips = this.floor(w.player.chips + winAmount);
                     this.ledger[w.player.id] = (this.ledger[w.player.id] || 0) + winAmount;
 
                     console.log(`[Table ${this.id}] Pot Distribution: ${w.player.name} wins ${winAmount} chips from level ${level}`);
@@ -670,7 +666,7 @@ export class Table {
     addChips(playerId: string, amount: number) {
         const player = this.players.find(p => p?.id === playerId);
         if (player) {
-            player.chips = this.floor3(player.chips + amount);
+            player.chips = this.floor(player.chips + amount);
             player.totalBuyIn += amount; // Track total buy-in
 
             // Update persistent ledger
