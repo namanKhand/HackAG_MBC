@@ -169,7 +169,12 @@ export default function PokerTable({
             }
 
             if (initialBuyIn) {
+                console.log('Auto-joining table with:', { tableId, playerName, address, initialBuyIn, initialTxHash });
                 setTimeout(() => {
+                    if (!address) {
+                        console.error('Cannot join table: Address is undefined');
+                        return;
+                    }
                     newSocket.emit('join_table', {
                         tableId,
                         name: playerName,
@@ -178,7 +183,7 @@ export default function PokerTable({
                         txHash: initialTxHash,
                         token
                     });
-                }, 100);
+                }, 500); // Increased delay to ensure connection stability
             }
         });
 
@@ -209,6 +214,7 @@ export default function PokerTable({
         });
 
         newSocket.on('error', (msg: string) => {
+            console.error('Socket error received:', msg);
             if (msg === 'Table not found') {
                 alert('Table not found. Redirecting to Lobby...');
                 router.push('/lobby');
