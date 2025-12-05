@@ -6,8 +6,8 @@ describe('Table Logic', () => {
 
     beforeEach(() => {
         table = new Table('test-table');
-        table.addPlayer({ id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active', stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } });
-        table.addPlayer({ id: 'p2', name: 'Player 2', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 1, isTurn: false, hasActed: false, status: 'active', stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } });
+        table.addPlayer({ id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active', totalBuyIn: 1000, handContribution: 0, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } });
+        table.addPlayer({ id: 'p2', name: 'Player 2', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 1, isTurn: false, hasActed: false, status: 'active', totalBuyIn: 1000, handContribution: 0, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } });
     });
 
     it('should start game correctly', () => {

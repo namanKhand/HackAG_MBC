@@ -27,7 +27,7 @@ describe('Table Features', () => {
 
     it('should track ledger and allow host to add chips', () => {
         const table = new Table(config);
-        const player = { id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active' as const, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
+        const player = { id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active' as const, totalBuyIn: 1000, handContribution: 0, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
         table.addPlayer(player);
 
         table.addChips('p1', 500);
@@ -37,8 +37,8 @@ describe('Table Features', () => {
 
     it('should allow host transfer', () => {
         const table = new Table(config);
-        const p1 = { id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active' as const, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
-        const p2 = { id: 'p2', name: 'Player 2', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 1, isTurn: false, hasActed: false, status: 'active' as const, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
+        const p1 = { id: 'p1', name: 'Player 1', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 0, isTurn: false, hasActed: false, status: 'active' as const, totalBuyIn: 1000, handContribution: 0, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
+        const p2 = { id: 'p2', name: 'Player 2', chips: 1000, startHandChips: 1000, bet: 0, folded: false, cards: [], seat: 1, isTurn: false, hasActed: false, status: 'active' as const, totalBuyIn: 1000, handContribution: 0, stats: { pfr: false, vpip: false, threeBet: false, threeBetOpp: false } };
         table.addPlayer(p1);
         table.addPlayer(p2);
 
