@@ -47,6 +47,32 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
         return () => clearInterval(interval);
     }, [address]);
 
+    // Auto-link Wallet
+    const { token, refreshUser } = useAuth();
+    useEffect(() => {
+        const linkWallet = async () => {
+            if (address && user && token && !user.wallets?.includes(address)) {
+                try {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/account/wallet`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ address })
+                    });
+                    if (res.ok) {
+                        await refreshUser();
+                        console.log('Wallet auto-linked successfully');
+                    }
+                } catch (e) {
+                    console.error('Error auto-linking wallet:', e);
+                }
+            }
+        };
+        linkWallet();
+    }, [address, user, token, refreshUser]);
+
     const navItems = [
         { name: 'Home', path: '/', icon: Home },
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
