@@ -406,7 +406,7 @@ export function setupSocketHandlers(io: Server) {
                         const amount = player.chips;
                         player.chips = 0; // Prevent race condition
                         await db.updateUserBalance(player.address, amount);
-                        console.log(`Saved ${amount} chips to balance for ${player.name}`);
+                        console.log(`[LeaveTable] Saved ${amount} chips to balance for ${player.name}`);
                     }
                 }
                 table.removePlayer(socket.id);

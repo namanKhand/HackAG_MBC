@@ -307,10 +307,10 @@ export default function PokerTable({
     // Table Color Logic
     const getTableColorClass = () => {
         switch (settings.tableColor) {
-            case 'blue': return 'from-blue-900/40 to-black border-blue-900/20';
-            case 'red': return 'from-red-900/40 to-black border-red-900/20';
-            case 'black': return 'from-zinc-900/40 to-black border-zinc-900/20';
-            case 'green': default: return 'from-green-900/40 to-black border-green-900/20';
+            case 'blue': return 'bg-blue-900 border-blue-900/20';
+            case 'red': return 'bg-red-900 border-red-900/20';
+            case 'black': return 'bg-zinc-900 border-zinc-900/20';
+            case 'green': default: return 'bg-green-900 border-green-900/20';
         }
     };
 
@@ -323,7 +323,7 @@ export default function PokerTable({
                         <div>
                             <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-white bg-clip-text text-transparent">Table: {tableId}</h1>
                             <div className="flex gap-4 mt-1">
-                                <p className="text-yellow-400 font-mono font-bold">Pot: ${table.pot}</p>
+                                <p className="text-yellow-400 font-mono font-bold">Pot: ${table.pot.toFixed(2)}</p>
                                 <p className="text-gray-400 text-sm border-l border-gray-600 pl-4">Stage: <span className="uppercase tracking-wider text-white">{table.stage}</span></p>
                             </div>
                         </div>
@@ -414,7 +414,7 @@ export default function PokerTable({
                     <div className="relative h-[600px] bg-gradient-to-b from-gray-900 to-black rounded-[200px] border-[20px] border-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center mx-auto mb-32 mt-12 w-[90%]">
 
                         {/* Felt Gradient - Dynamic Color */}
-                        <div className={`absolute inset-4 rounded-[180px] bg-gradient-to-br ${getTableColorClass()} shadow-inner transition-colors duration-500`}></div>
+                        <div className={`absolute inset-4 rounded-[180px] ${getTableColorClass()} shadow-inner transition-colors duration-500`}></div>
 
                         {/* Center Logo (Base) */}
                         <div className="absolute opacity-20 pointer-events-none">
@@ -435,7 +435,7 @@ export default function PokerTable({
 
                         {/* Pot Display */}
                         <div className="absolute top-1/2 translate-y-12 text-white/90 font-mono text-lg bg-black/60 px-6 py-2 rounded-full border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
-                            Pot: <span className="text-yellow-400 font-bold">${table.pot}</span>
+                            Pot: <span className="text-yellow-400 font-bold">${table.pot.toFixed(2)}</span>
                         </div>
 
                         {/* Players */}
@@ -477,12 +477,12 @@ export default function PokerTable({
 
                                     {/* Chips & Bet */}
                                     <div className="bg-black/80 px-3 py-1 rounded-full -mt-2 text-xs text-white border border-white/10 backdrop-blur-md z-30 font-mono shadow-lg relative">
-                                        ${player.chips}
+                                        ${player.chips.toFixed(2)}
                                     </div>
 
                                     {player.bet > 0 && (
                                         <div className="absolute top-24 bg-yellow-600 px-3 py-1 rounded-lg text-xs text-white font-bold shadow-lg border border-yellow-400/50 z-20 whitespace-nowrap">
-                                            Bet: ${player.bet}
+                                            Bet: ${player.bet.toFixed(2)}
                                         </div>
                                     )}
 

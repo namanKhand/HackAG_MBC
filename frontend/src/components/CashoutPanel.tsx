@@ -3,9 +3,10 @@ import { useAccount } from 'wagmi';
 
 interface CashoutPanelProps {
     className?: string;
+    onSuccess?: () => void;
 }
 
-export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className }) => {
+export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className, onSuccess }) => {
     const { address } = useAccount();
     const [balance, setBalance] = useState<number>(0);
     const [amount, setAmount] = useState<string>('');
@@ -54,6 +55,7 @@ export const CashoutPanel: React.FC<CashoutPanelProps> = ({ className }) => {
                 setMessage({ type: 'success', text: `Successfully cashed out ${val} chips!` });
                 setBalance(data.newBalance);
                 setAmount('');
+                if (onSuccess) onSuccess();
             } else {
                 setMessage({ type: 'error', text: data.error || "Cashout failed" });
             }

@@ -231,7 +231,7 @@ function LobbyContent() {
                         >
                             Close ✕
                         </button>
-                        <CashoutPanel />
+                        <CashoutPanel onSuccess={fetchPokerBalance} />
                     </div>
                 </div>
             )}

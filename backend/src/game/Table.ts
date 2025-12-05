@@ -213,8 +213,6 @@ export class Table {
             sbPlayer.bet = sbAmount;
             sbPlayer.handContribution += sbAmount;
             this.pot += sbAmount;
-        } else {
-            console.log(`[Table ${this.id}] SB Seat ${sbSeat} is empty/inactive. Skipping SB.`);
         }
 
         // BB
@@ -226,15 +224,6 @@ export class Table {
             bbPlayer.handContribution += bbAmount;
             this.pot += bbAmount;
             this.currentBet = this.bigBlind;
-        } else {
-            console.log(`[Table ${this.id}] BB Seat ${bbSeat} is empty/inactive. Skipping BB.`);
-            // Even if BB is empty, the min raise should be based on the blind structure?
-            // Or should it be 0? Standard rules: if no BB, betting starts at 0?
-            // Usually "Dead Blind" means the money is dead, but here we just skip it.
-            // If no BB, currentBet is 0 (or SB amount).
-            // Let's assume currentBet becomes the highest bet so far (SB or 0).
-            // But we need to enforce the minimum bet size for the first player.
-            // Let's keep minRaise = bigBlind.
         }
 
         // Ensure minRaise is at least bigBlind (standard opening)
