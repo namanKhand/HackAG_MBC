@@ -162,61 +162,39 @@ export class Table {
         this.winners = [];
         this.lastAggressorId = null;
 
-        // Move Dealer Button
+        // WSOP / Standard Forward Moving Blinds Logic
+        // 1. Move Dealer Button to next active player
         this.dealerIndex = this.nextActivePlayer(this.dealerIndex);
 
-        // Deal cards
-        this.players.forEach(p => {
-            if (p && p.status === 'active' && p.chips > 0) {
-                p.startHandChips = p.chips; // Snapshot chips
-                p.cards = [this.deck.deal()!, this.deck.deal()!];
-                p.folded = false;
-                p.bet = 0;
-                p.handContribution = 0; // Reset contribution
-                p.isTurn = false;
-                p.hasActed = false;
-                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
-                p.stats.showCards = false;
+        // 2. Identify SB and BB positions (Active players only)
+        let sbIndex = -1;
+        let bbIndex = -1;
 
-                // Update hands played
-                console.log(`[Table ${this.id}] Updating hands_played for ${p.name} (RealMoney: ${this.config.isRealMoney})`);
-                if (this.config.isRealMoney && p.address) {
-                    db.updateUserStats(p.address, { hands_played: 1 }, 'real');
-                } else if (!this.config.isRealMoney && p.accountId) {
-                    console.log(`[Table ${this.id}] Updating Play Money stats for account ${p.accountId}`);
-                    db.updateUserStats(p.accountId, { hands_played: 1 }, 'play');
-                } else {
-                    console.warn(`[Table ${this.id}] Could not update stats for ${p.name} - Missing address/accountId`);
-                }
-            } else if (p) {
-                p.cards = [];
-                p.folded = true;
-                p.bet = 0;
-                p.handContribution = 0;
-                p.isTurn = false;
-                p.hasActed = false;
-                p.stats = { pfr: false, vpip: false, threeBet: false, threeBetOpp: false };
-                p.stats.showCards = false;
-            }
-        });
+        const activePlayersCount = this.players.filter(p => p && p.status === 'active' && p.chips > 0).length;
 
-        // Post Blinds
-        // Fixed offsets for blinds (Empty Blind Logic)
-        const sbSeat = (this.dealerIndex + 1) % 6;
-        const bbSeat = (this.dealerIndex + 2) % 6;
+        if (activePlayersCount === 2) {
+            // Heads Up: Dealer is SB, Other is BB
+            sbIndex = this.dealerIndex;
+            bbIndex = this.nextActivePlayer(this.dealerIndex);
+        } else {
+            // Normal: Dealer -> SB -> BB
+            sbIndex = this.nextActivePlayer(this.dealerIndex);
+            bbIndex = this.nextActivePlayer(sbIndex);
+        }
 
-        // SB
-        const sbPlayer = this.players[sbSeat];
+        // Post SB
+        const sbPlayer = this.players[sbIndex];
         if (sbPlayer && sbPlayer.status === 'active' && sbPlayer.chips > 0) {
             const sbAmount = Math.min(sbPlayer.chips, this.smallBlind);
             sbPlayer.chips = this.floor(sbPlayer.chips - sbAmount);
             sbPlayer.bet = sbAmount;
             sbPlayer.handContribution += sbAmount;
             this.pot += sbAmount;
+            console.log(`[Table ${this.id}] SB posted by ${sbPlayer.name}: ${sbAmount}`);
         }
 
-        // BB
-        const bbPlayer = this.players[bbSeat];
+        // Post BB
+        const bbPlayer = this.players[bbIndex];
         if (bbPlayer && bbPlayer.status === 'active' && bbPlayer.chips > 0) {
             const bbAmount = Math.min(bbPlayer.chips, this.bigBlind);
             bbPlayer.chips = this.floor(bbPlayer.chips - bbAmount);
@@ -224,29 +202,20 @@ export class Table {
             bbPlayer.handContribution += bbAmount;
             this.pot += bbAmount;
             this.currentBet = this.bigBlind;
+            console.log(`[Table ${this.id}] BB posted by ${bbPlayer.name}: ${bbAmount}`);
         }
 
-        // Ensure minRaise is at least bigBlind (standard opening)
+        // Ensure minRaise is at least bigBlind
         this.minRaise = this.bigBlind;
 
-        // If BB posted, currentBet is BB. If not, it's SB or 0.
-        // We need to ensure the first player can call/raise properly.
-        // If BB is missing, usually the UTG still has to "call" the big blind amount to enter?
-        // Or is it just open?
-        // User said "make it an empty blind".
-        // Let's stick to: currentBet is whatever is on the table.
-        // But if currentBet < bigBlind, we should probably enforce min bet?
-        // Let's leave currentBet as is (max of bets).
-        // If BB is missing, currentBet might be SB (e.g. 10) or 0.
-
-        // Set turn to player after BB seat (UTG)
-        // We start looking for the next active player starting from the BB seat.
-        this.turnIndex = this.nextActivePlayer(bbSeat);
+        // Set turn to player after BB (UTG)
+        this.turnIndex = this.nextActivePlayer(bbIndex);
         if (this.players[this.turnIndex]) {
             this.players[this.turnIndex]!.isTurn = true;
         }
         return { success: true };
     }
+
 
     advanceTurn() {
         // Check for Early Win (everyone else folded)

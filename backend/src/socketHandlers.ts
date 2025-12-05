@@ -414,6 +414,9 @@ export function setupSocketHandlers(io: Server) {
                 // Broadcast update
                 const sockets = await io.in(tableId).fetchSockets();
                 for (const s of sockets) {
+                    if (s.id === socket.id) {
+                        s.emit("left_table", { success: true });
+                    }
                     s.emit("table_state", table.getForPlayer(s.id));
                 }
             }

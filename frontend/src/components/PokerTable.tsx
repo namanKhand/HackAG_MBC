@@ -223,6 +223,11 @@ export default function PokerTable({
             }
         });
 
+        newSocket.on('left_table', () => {
+            console.log('Successfully left table. Redirecting...');
+            router.push(`/lobby?mode=${mode}`);
+        });
+
         return () => {
             newSocket.disconnect();
         };
@@ -251,7 +256,7 @@ export default function PokerTable({
     const handleLeaveTable = () => {
         if (socket) {
             socket.emit('leave_table', { tableId });
-            router.push(`/lobby?mode=${mode}`);
+            // Wait for 'left_table' event to redirect
         }
     };
 
