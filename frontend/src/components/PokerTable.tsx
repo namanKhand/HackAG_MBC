@@ -404,18 +404,18 @@ export default function PokerTable({
                                 <div className="space-y-4">
                                     <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
                                         <span className="text-gray-400">Total Buy-In</span>
-                                        <span className="font-mono text-lg text-white">${me.totalBuyIn ?? me.startHandChips ?? 0}</span>
+                                        <span className="font-mono text-lg text-white">${(me.totalBuyIn ?? me.startHandChips ?? 0).toFixed(2)}</span>
                                     </div>
                                     <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
                                         <span className="text-gray-400">Current Chips</span>
-                                        <span className="font-mono text-lg text-blue-400">${me.chips}</span>
+                                        <span className="font-mono text-lg text-blue-400">${me.chips.toFixed(2)}</span>
                                     </div>
                                     <div className="border-t border-white/10 my-2"></div>
                                     <div className="bg-black/40 p-3 rounded-lg flex justify-between items-center">
                                         <span className="text-gray-400">Net Profit</span>
                                         <span className={`font-mono text-xl font-bold ${(me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                             {(me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)) >= 0 ? '+' : ''}
-                                            ${me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)}
+                                            ${(me.chips - (me.totalBuyIn ?? me.startHandChips ?? 0)).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
@@ -575,7 +575,7 @@ export default function PokerTable({
                                                     onClick={() => handleAction('call')}
                                                     className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm"
                                                 >
-                                                    CALL ${callAmount}
+                                                    CALL ${callAmount.toFixed(2)}
                                                 </button>
                                             )}
 
@@ -593,20 +593,12 @@ export default function PokerTable({
                                                             className="w-20 bg-black/50 border border-white/10 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-green-500"
                                                         />
                                                     </div>
-                                                    <input
-                                                        type="range"
-                                                        min={Math.min((table.currentBet + (table.minRaise || 20)), me.chips + me.bet)}
-                                                        max={me.chips + me.bet}
-                                                        step={minBuyIn < 1 ? "0.01" : "1"}
-                                                        value={raiseAmount}
-                                                        onChange={(e) => setRaiseAmount(Number(e.target.value))}
-                                                        className="w-24 accent-green-500 h-1"
-                                                    />
+
                                                     <button
                                                         onClick={() => handleAction('raise', raiseAmount)}
                                                         className="bg-green-600 hover:bg-green-500 text-white px-2 py-2 rounded-lg font-bold transition-all shadow-lg active:scale-95 text-xs w-full whitespace-nowrap"
                                                     >
-                                                        {raiseAmount === me.chips + me.bet ? 'ALL IN' : `RAISE $${raiseAmount}`}
+                                                        {raiseAmount === me.chips + me.bet ? 'ALL IN' : `RAISE $${raiseAmount.toFixed(2)}`}
                                                     </button>
                                                 </div>
                                             )}
@@ -721,8 +713,8 @@ export default function PokerTable({
                                 className="w-full accent-green-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                             />
                             <div className="flex justify-between text-gray-500 text-sm mt-2 font-mono">
-                                <span>${minBuyIn}</span>
-                                <span>${maxBuyIn}</span>
+                                <span>${minBuyIn.toFixed(2)}</span>
+                                <span>${maxBuyIn.toFixed(2)}</span>
                             </div>
                         </div>
 
